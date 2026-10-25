@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TIME RELAY · V24.2 Supabase Realtime</title>
+<style>
+  :root{
+    --bg:#020817; --panel:#071428; --panel2:#0b1830; --line:#29405f; --text:#f8fafc; --muted:#9fb2cb;
+    --cyan:#38bdf8; --cyan2:#67e8f9; --gold:#facc15; --green:#86efac; --red:#fca5a5;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;background:#020b1f;color:var(--text)}
+  body{display:flex;align-items:center;justify-content:center;padding:18px}
+  .frame{
+    position:relative;width:min(92vw,540px);aspect-ratio:1/1.12;border-radius:48px;overflow:hidden;
+    background:#021124;box-shadow:0 30px 70px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.2)
+  }
+  .result-bg{position:absolute;inset:0;background:#0b1220 center/cover no-repeat}
+  .result-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.18) 55%,rgba(2,8,23,.55) 78%,rgba(2,8,23,.85))}
+  .brand{position:absolute;left:18px;top:18px;z-index:5;font-size:16px;font-weight:900;letter-spacing:.4px;text-shadow:0 2px 8px rgba(0,0,0,.45)}
+  .open-btn{
+    position:absolute;right:18px;top:18px;z-index:5;
+    height:42px;padding:0 16px;border-radius:14px;border:1px solid rgba(103,232,249,.45);
+    background:rgba(5,112,153,.46);color:#fff;font-weight:900;cursor:pointer
+  }
+  .panel{
+    position:absolute;left:18px;right:18px;top:18px;bottom:18px;z-index:10;display:none;
+    border-radius:26px;overflow:hidden;border:1px solid rgba(148,163,184,.28);
+    background:rgba(2,10,24,.96);backdrop-filter:blur(4px)
+  }
+  .panel.show{display:flex;flex-direction:column}
+  .panel-head{padding:18px 18px 12px;border-bottom:1px solid rgba(148,163,184,.18);background:linear-gradient(180deg,#071527,#08192f)}
+  .title-row{display:flex;align-items:center;gap:10px}
+  .title{font-size:18px;font-weight:900;flex:1}
+  .sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .head-btn,.face-label{
+    height:38px;padding:0 14px;border-radius:12px;border:1px solid rgba(148,163,184,.3);
+    background:#0d1930;color:#fff;font-weight:800;cursor:pointer
+  }
+  .face-label{display:inline-flex;align-items:center;border-color:rgba(103,232,249,.45);color:#cffafe}
+  .status{padding:10px 18px 0;font-size:13px;color:var(--muted);min-height:28px}
+  .status.ok{color:var(--green)} .status.err{color:var(--red)} .status.busy{color:#7dd3fc}
+  .controls{padding:10px 18px 14px;background:#071325;border-bottom:1px solid rgba(148,163,184,.16)}
+  .stage-row{display:flex;gap:10px;align-items:center}
+  .stage-row span{font-size:13px;font-weight:700;color:#cbd5e1}
+  select{
+    flex:1;height:40px;border-radius:12px;border:1px solid var(--line);background:#0c1730;color:#fff;
+    padding:0 12px;font-size:14px;font-weight:700
+  }
+  .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .tab{
+    height:42px;border-radius:13px;border:1px solid var(--line);background:#0b1730;color:#fff;
+    font-size:14px;font-weight:900;cursor:pointer
+  }
+  .tab.active{background:#154b67;border-color:#67e8f9}
+  .cards{
+    flex:1;overflow:auto;padding:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start;background:#031121
+  }
+  .card{
+    border-radius:18px;border:1px solid rgba(90,120,160,.32);background:linear-gradient(180deg,#0a1630,#08142a);padding:14px;min-height:126px;
+    cursor:pointer;display:flex;flex-direction:column;justify-content:space-between
+  }
+  .card:hover{border-color:#67e8f9}
+  .card.selected{border-color:var(--gold);box-shadow:0 0 0 1px rgba(250,204,21,.14) inset}
+  .num{font-size:20px;font-weight:900;color:#67e8f9}
+  .card-name{font-size:18px;font-weight:900;line-height:1.15;margin-top:10px}
+  .card-desc{font-size:13px;color:#c6d4e8;margin-top:4px;line-height:1.35}
+  .bottom-actions{
+    position:absolute;left:18px;right:18px;bottom:24px;z-index:6;display:flex;gap:12px
+  }
+  .action{
+    flex:1;height:54px;border-radius:16px;border:1px solid rgba(250,204,21,.7);background:rgba(3,10,28,.82);color:#fff;
+    font-size:20px;font-weight:900;cursor:pointer;backdrop-filter:blur(3px)
+  }
+  .action.secondary{border-color:rgba(148,163,184,.38)}
+  .action:disabled{opacity:.45;cursor:not-allowed}
+  .footer{position:absolute;left:18px;right:18px;bottom:8px;z-index:4;font-size:13px;color:#d5e2f2;display:flex;justify-content:space-between;opacity:.92}
+  .overlay{
+    position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.75);backdrop-filter:blur(4px)
+  }
+  .overlay.show{display:flex}
+  .loader-box{
+    width:min(86vw,330px);border-radius:18px;background:#071428;border:1px solid rgba(103,232,249,.36);padding:18px;text-align:center
+  }
+  .loader-title{font-size:19px;font-weight:900}
+  .loader-sub{font-size:13px;color:#cbd5e1;margin-top:10px;line-height:1.45}
+  .loader-time{font-size:26px;font-weight:900;color:#67e8f9;margin-top:10px}
+
+  .star-layer{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.78;background-image:radial-gradient(circle at 12% 18%,rgba(255,255,255,.95) 0 1px,transparent 1.5px),radial-gradient(circle at 72% 16%,rgba(125,211,252,.9) 0 1px,transparent 1.5px),radial-gradient(circle at 38% 42%,rgba(255,255,255,.8) 0 1px,transparent 1.5px),radial-gradient(circle at 82% 58%,rgba(255,255,255,.75) 0 1px,transparent 1.5px),radial-gradient(circle at 20% 76%,rgba(103,232,249,.8) 0 1px,transparent 1.5px);background-size:64px 64px,93px 93px,117px 117px,139px 139px,171px 171px}
+  .home-view,.simple-view{position:absolute;inset:0;z-index:7;padding:72px 28px 62px;display:none;flex-direction:column;align-items:center}
+  .home-view.show,.simple-view.show{display:flex}
+  .home-copy{text-align:center;margin-top:10%;margin-bottom:30px}
+  .home-logo{font-size:30px;font-weight:950;letter-spacing:1.6px}
+  .home-tag{font-size:13px;color:#b8c9dd;margin-top:8px}
+  .menu-stack{width:min(100%,310px);display:grid;gap:12px;margin-top:8px}
+  .menu-main{height:58px;border:1px solid rgba(103,232,249,.36);border-radius:16px;background:rgba(7,20,40,.88);color:#fff;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+  .menu-main:active{transform:translateY(1px)}
+  .menu-main.primary{border-color:rgba(103,232,249,.65);background:rgba(10,52,78,.88)}
+  .home-mini{margin-top:auto;display:flex;gap:18px;font-size:12px;color:#9fb2cb}
+  .view-head{width:100%;display:flex;align-items:center;gap:10px;margin-bottom:22px}
+  .back-btn{width:42px;height:42px;border-radius:13px;border:1px solid rgba(148,163,184,.3);background:#0a1730;color:#fff;font-size:20px;cursor:pointer}
+  .view-title{font-size:20px;font-weight:900}
+  .view-sub{font-size:12px;color:#9fb2cb;margin-top:2px}
+  .simple-note{margin-top:18px;font-size:12px;color:#8fa5bf;text-align:center;line-height:1.55;max-width:320px}
+  .home-footer{position:absolute;left:22px;right:22px;bottom:14px;z-index:8;display:flex;align-items:center;justify-content:space-between;color:#d5e2f2;font-size:12px}
+  .date-pill{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:8px 12px;background:rgba(2,10,24,.78);font-weight:800}
+
+  .relay-form-view,.relay-list-view,.join-view{position:absolute;inset:0;z-index:12;padding:62px 22px 28px;display:none;flex-direction:column;background:rgba(2,8,23,.97);overflow:auto}
+  .relay-form-view.show,.relay-list-view.show,.join-view.show{display:flex}
+  .form-grid{display:grid;gap:10px;width:100%;margin-top:4px}
+  .field{display:grid;gap:6px}
+  .field label{font-size:12px;color:#a9bad0;font-weight:800}
+  .field input,.field select,.field textarea{width:100%;border:1px solid #29405f;border-radius:12px;background:#0a1730;color:#fff;padding:11px 12px;font:inherit}
+  .field textarea{min-height:74px;resize:vertical}
+  .small-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .primary-wide{width:100%;height:52px;border:1px solid rgba(103,232,249,.6);border-radius:15px;background:#0b3b57;color:#fff;font-size:16px;font-weight:900;cursor:pointer;margin-top:8px}
+  .ghost-wide{width:100%;height:46px;border:1px solid rgba(148,163,184,.34);border-radius:14px;background:#0a1730;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
+  .relay-card{border:1px solid rgba(148,163,184,.28);background:#08162d;border-radius:16px;padding:14px;margin-bottom:10px}
+  .relay-card h3{margin:0 0 6px;font-size:16px}.relay-meta{font-size:12px;color:#9fb2cb;line-height:1.55}.relay-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .mini-btn{height:36px;padding:0 11px;border-radius:10px;border:1px solid rgba(103,232,249,.35);background:#0b2740;color:#fff;font-size:12px;font-weight:800;cursor:pointer}
+  .invite-box{margin-top:14px;border:1px dashed rgba(103,232,249,.5);border-radius:14px;padding:12px;background:#06172a}.invite-link{font-size:12px;color:#cffafe;word-break:break-all;line-height:1.45}.mode-badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#11233e;color:#b8d8f4;font-size:11px;font-weight:800;margin-bottom:8px}
+  .notice{font-size:12px;color:#9fb2cb;line-height:1.55;margin-top:10px}.notice strong{color:#f8fafc}
+  .join-title{font-size:22px;font-weight:950;margin-bottom:4px}.join-sub{font-size:12px;color:#9fb2cb;margin-bottom:18px}
+
+
+  .relay-admin-view{position:absolute;inset:0;z-index:13;padding:62px 22px 28px;display:none;flex-direction:column;background:rgba(2,8,23,.98);overflow:auto}
+  .relay-admin-view.show{display:flex}
+  .live-pill{display:inline-flex;align-items:center;gap:7px;padding:5px 9px;border-radius:999px;background:#082b26;color:#86efac;font-size:11px;font-weight:900;border:1px solid rgba(134,239,172,.28)}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:#86efac;box-shadow:0 0 8px rgba(134,239,172,.8)}
+  .entry-card{display:grid;grid-template-columns:68px 1fr;gap:12px;padding:12px;border:1px solid rgba(148,163,184,.26);border-radius:15px;background:#08162d;margin-bottom:10px}
+  .entry-photo{width:68px;height:68px;border-radius:12px;object-fit:cover;background:#0d1a2e;border:1px solid rgba(148,163,184,.22)}
+  .entry-photo.empty{display:flex;align-items:center;justify-content:center;color:#6f87a6;font-size:11px}
+  .entry-name{font-weight:900;font-size:15px}.entry-msg{font-size:13px;color:#d5e2f2;margin-top:4px;line-height:1.4}.entry-meta{font-size:11px;color:#8fa5bf;margin-top:6px}
+  .connection-note{font-size:12px;color:#9fb2cb;margin:2px 0 14px;line-height:1.5}
+
+  @media (max-width:520px){
+    body{padding:8px}
+    .frame{width:100%;border-radius:40px}
+    .cards{grid-template-columns:1fr}
+    .card{min-height:120px}
+    .card-name{font-size:17px}
+    .bottom-actions{bottom:18px}
+    .action{height:50px;font-size:18px}
+  }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="frame">
+  <div class="result-bg" id="resultBg"></div>
+  <div class="star-layer"></div>
+
+  <div class="home-view show" id="homeView">
+    <div class="home-copy">
+      <div class="home-logo">TIME RELAY</div>
+      <div class="home-tag">시간을 건너, 나를 다시 만나다</div>
+    </div>
+    <div class="menu-stack">
+      <button class="menu-main primary" data-view="myTimeView">나의 시간</button>
+      <button class="menu-main" data-view="relayView">우리의 릴레이</button>
+      <button class="menu-main" data-view="capsuleView">타임캡슐</button>
+    </div>
+    <div class="home-mini"><span>알림</span><span>설정</span></div>
+  </div>
+
+  <div class="simple-view" id="myTimeView">
+    <div class="view-head"><button class="back-btn" data-home>←</button><div><div class="view-title">나의 시간</div><div class="view-sub">한 가지를 선택하세요</div></div></div>
+    <div class="menu-stack">
+      <button class="menu-main primary" data-personal="today">오늘의 졸업</button>
+      <button class="menu-main" data-personal="dream">꿈꾸는 나</button>
+      <button class="menu-main" data-personal="memory">그 시절</button>
+    </div>
+  </div>
+
+  <div class="simple-view" id="relayView">
+    <div class="view-head"><button class="back-btn" data-home>←</button><div><div class="view-title">우리의 릴레이</div><div class="view-sub">함께 남기는 시간</div></div></div>
+    <div class="menu-stack">
+      <button class="menu-main primary" id="newRelayBtn">새 릴레이</button>
+      <button class="menu-main" id="activeRelayBtn">참여 중</button>
+      <button class="menu-main" id="completedRelayBtn">완성본</button>
+    </div>
+    <div class="simple-note">방 생성·초대·사진 제출·참여자 실시간 수집까지 Supabase로 연결됩니다.</div>
+  </div>
+
+  <div class="simple-view" id="capsuleView">
+    <div class="view-head"><button class="back-btn" data-home>←</button><div><div class="view-title">타임캡슐</div><div class="view-sub">미래로 보내는 기록</div></div></div>
+    <div class="menu-stack">
+      <button class="menu-main primary" data-proto="나의 캡슐">나의 캡슐</button>
+      <button class="menu-main" data-proto="우리의 캡슐">우리의 캡슐</button>
+      <button class="menu-main" data-proto="개봉 예정">개봉 예정</button>
+    </div>
+    <div class="simple-note">사진을 원본으로 보관하고, 개봉 시 브라우저 모션을 다시 적용하는 구조로 준비합니다.</div>
+  </div>
+
+
+  <div class="relay-form-view" id="relayFormView">
+    <div class="view-head"><button class="back-btn" id="relayFormBack">←</button><div><div class="view-title">새 릴레이</div><div class="view-sub">30초면 방을 만들 수 있어요</div></div></div>
+    <div class="form-grid">
+      <div class="field"><label>모임 종류</label><select id="relayType"><option>졸업반</option><option>동창회</option><option>동호회</option><option>가족</option><option>직장</option><option>여행모임</option><option>자유모임</option></select></div>
+      <div class="field"><label>릴레이 이름</label><input id="relayTitle" maxlength="60" placeholder="예: 2026년 3학년 2반 졸업 릴레이"></div>
+      <div class="small-row"><div class="field"><label>마감일</label><input id="relayDeadline" type="date"></div><div class="field"><label>참여 방식</label><select id="relayApproval"><option value="approval">방장 승인</option><option value="open">바로 참여</option><option value="password">비밀번호 확인</option></select></div></div>
+      <div class="field"><label>대표 방장</label><input id="relayOwner" maxlength="30" placeholder="이름 또는 별칭"></div>
+      <div class="field"><label>공동방장 (최대 4명, 쉼표로 구분)</label><input id="relayCoAdmins" maxlength="120" placeholder="예: 김총무, 이반장"></div>
+      <div class="field"><label>한 줄 안내</label><textarea id="relayNote" maxlength="160" placeholder="사진 한 장과 한 줄 메시지를 남겨주세요."></textarea></div>
+      <button class="primary-wide" id="createRelayBtn">릴레이 방 만들기</button>
+      <div class="notice"><strong>관리 원칙:</strong> 대표 방장 1명 + 공동방장 복수 지정. 장기 타임캡슐에서도 특정 한 사람에게만 의존하지 않는 구조로 이어집니다.</div>
+    </div>
+  </div>
+
+  <div class="relay-list-view" id="relayListView">
+    <div class="view-head"><button class="back-btn" id="relayListBack">←</button><div><div class="view-title" id="relayListTitle">참여 중</div><div class="view-sub">내가 만든 릴레이</div></div></div>
+    <div id="relayList"></div>
+  </div>
+
+  <div class="join-view" id="joinView">
+    <div class="view-head"><button class="back-btn" id="joinBack">←</button><div><div class="view-title">릴레이 참여</div><div class="view-sub">앱 설치 없이 바로 참여</div></div></div>
+    <div class="mode-badge" id="joinType">모임</div>
+    <div class="join-title" id="joinTitle">릴레이</div>
+    <div class="join-sub" id="joinDeadline"></div>
+    <div class="form-grid">
+      <div class="field"><label>이름 또는 별명</label><input id="joinName" maxlength="30" placeholder="표시할 이름"></div>
+      <div class="field"><label>사진 1장</label><input id="joinPhoto" type="file" accept="image/*"></div>
+      <div class="field"><label>한 줄 메시지</label><textarea id="joinMessage" maxlength="120" placeholder="친구들에게 남길 한마디"></textarea></div>
+      <div class="field"><label>미래의 나에게 (선택)</label><textarea id="joinFuture" maxlength="160" placeholder="나중에 캡슐을 열 때 볼 한마디"></textarea></div>
+      <button class="primary-wide" id="submitJoinBtn">릴레이에 참여하기</button>
+      <div class="notice">사진과 메시지는 Supabase에 저장되고, 방장 화면에는 <strong>실시간으로 참여자가 나타납니다.</strong></div>
+    </div>
+  </div>
+
+
+  <div class="relay-admin-view" id="relayAdminView">
+    <div class="view-head"><button class="back-btn" id="relayAdminBack">←</button><div style="flex:1"><div class="view-title" id="relayAdminTitle">릴레이 참여자</div><div class="view-sub" id="relayAdminSub">제출이 들어오면 자동으로 갱신됩니다</div></div><span class="live-pill"><span class="live-dot"></span>LIVE</span></div>
+    <div class="connection-note" id="relayLiveState">Supabase 연결 확인 중…</div>
+    <div id="relayEntries"></div>
+  </div>
+
+  <div class="home-footer" id="homeFooter"><span class="date-pill" id="datePill">—</span><span>RELAY 1 · 정보</span></div>
+
+  <div class="panel" id="panel">
+    <div class="panel-head">
+      <div class="title-row">
+        <div class="title">졸업사진 만들기</div>
+        <label class="face-label" for="faceInput">👤 얼굴</label>
+        <button class="head-btn" id="closeBtn">×</button>
+      </div>
+      <div class="sub">학령을 고르고, 오늘의 졸업 · 꿈꾸는 나 · 그 시절 중 하나를 선택하세요</div>
+    </div>
+
+    <div class="status" id="status">얼굴 등록 → 학령 선택 → 카드 선택</div>
+
+    <div class="controls">
+      <div class="stage-row">
+        <span>학령</span>
+        <select id="stageSelect">
+          <option value="kindergarten">유치원 · 어린이집</option>
+          <option value="elementary">초등학교</option>
+          <option value="middle">중학교</option>
+          <option value="high" selected>고등학교</option>
+          <option value="university">대학교 · 대학원</option>
+        </select>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="today">오늘의 졸업</button>
+        <button class="tab" id="dreamTab" data-tab="dream">꿈꾸는 나</button>
+        <button class="tab" data-tab="memory">그 시절</button>
+      </div>
+    </div>
+
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <div class="bottom-actions">
+    <button class="action secondary" id="regenBtn" disabled>↻ 다시 만들기</button>
+    <button class="action" id="saveBtn" disabled>↓ 저장</button>
+  </div>
+  <div class="footer" style="display:none">
+    <span id="footerStatus">V24</span>
+    <span id="footerCount">1 · ○</span>
+  </div>
+
+  <div class="overlay" id="loading">
+    <div class="loader-box">
+      <div class="loader-title" id="loadingTitle">졸업사진 생성 중</div>
+      <div class="loader-sub">빠른 모드로 생성 중입니다. 같은 얼굴·같은 스타일은 다음부터 즉시 불러옵니다.</div>
+      <div class="loader-time" id="loadingTime">0초</div>
+    </div>
+  </div>
+
+  <input id="faceInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+</div>
+
+<script>
+(() => {
+  const STAGE_CARDS = {
+    kindergarten: {
+      today:[
+        {key:'kg_today_gown',name:'학사복 + 꽃다발',desc:'학사모·꽃다발·졸업장·포토존'},
+        {key:'kg_today_hanbok',name:'한복 졸업',desc:'한복·꽃다발·밝은 졸업 포토존'},
+        {key:'kg_today_uniform',name:'원복 졸업',desc:'원복·졸업장·학교 포토존'}
+      ],
+      dream:[
+        {key:'dream_doctor',name:'의사',desc:'하얀 가운과 청진기'},
+        {key:'dream_firefighter',name:'소방관',desc:'안전한 소방관 체험복'},
+        {key:'dream_police',name:'경찰관',desc:'친근한 경찰관 의상'},
+        {key:'dream_astronaut',name:'우주비행사',desc:'우주복과 우주 체험 배경'},
+        {key:'dream_chef',name:'요리사',desc:'셰프복과 요리사 모자'},
+        {key:'dream_teacher',name:'선생님',desc:'책과 교실 분위기'}
+      ],
+      memory:[
+        {key:'kg_memory_uniform',name:'옛 원복',desc:'옛 유치원 원복과 작은 가방'},
+        {key:'kg_memory_studio',name:'옛 사진관 졸업',desc:'오래된 앨범 같은 졸업사진'}
+      ]
+    },
+
+    elementary: {
+      today:[
+        {key:'elem_today_gown',name:'학사복 + 꽃다발',desc:'학사모·꽃다발·졸업장·포토존'},
+        {key:'elem_today_formal',name:'단정한 졸업복',desc:'깔끔한 졸업식 복장·꽃다발'},
+        {key:'elem_today_hanbok',name:'한복 졸업',desc:'한복·꽃다발·졸업 포토존'}
+      ],
+      dream:[
+        {key:'dream_doctor',name:'의사',desc:'의사가 된 미래의 나'},
+        {key:'dream_firefighter',name:'소방관',desc:'소방관이 된 미래의 나'},
+        {key:'dream_police',name:'경찰관',desc:'경찰관이 된 미래의 나'},
+        {key:'dream_astronaut',name:'우주비행사',desc:'우주를 향한 미래의 나'},
+        {key:'dream_scientist',name:'과학자·로봇',desc:'과학·로봇 연구원의 모습'},
+        {key:'dream_pilot',name:'조종사',desc:'비행기를 조종하는 미래'}
+      ],
+      memory:[
+        {key:'elem_memory_bag',name:'옛 책가방 학생',desc:'옛 학생복장과 각진 책가방'},
+        {key:'elem_memory_pe',name:'옛 체육복',desc:'복고 운동장 분위기'},
+        {key:'elem_memory_album',name:'복고 졸업',desc:'오래된 졸업앨범 감성'}
+      ]
+    },
+
+    middle: {
+      today:[
+        {key:'middle_today_uniform',name:'교복 + 꽃다발',desc:'현재 교복·꽃다발·졸업장'},
+        {key:'middle_today_knit',name:'니트베스트 교복',desc:'니트베스트·꽃다발·교실'},
+        {key:'middle_today_gown',name:'학사복 졸업',desc:'학사모·꽃다발·학교 포토존'}
+      ],
+      dream:[],
+      memory:[
+        {key:'middle_memory_black',name:'검정 학생복',desc:'옛 학생복과 각진 책가방'},
+        {key:'middle_memory_cap',name:'학생모 교복',desc:'학생모·옛 책가방·학교 풍경'},
+        {key:'middle_memory_pe',name:'옛 체육복',desc:'복고 체육복과 운동장'}
+      ]
+    },
+
+    high: {
+      today:[
+        {key:'high_today_uniform',name:'현재 교복 + 꽃다발',desc:'교복·꽃다발·졸업장·포토존'},
+        {key:'high_today_knit',name:'니트베스트 교복',desc:'요즘식 레이어드 교복·꽃다발'},
+        {key:'high_today_daily',name:'생활복 졸업',desc:'편한 교복·졸업장·학교 배경'},
+        {key:'high_today_formal',name:'정장 졸업',desc:'단정한 정장·꽃다발·졸업장'}
+      ],
+      dream:[],
+      memory:[
+        {key:'high_memory_drill',name:'점박이 교련복',desc:'흰바탕 검정 얼룩 · 학생모 · 회색 책가방'},
+        {key:'high_memory_black',name:'검정 학생복 + 책가방',desc:'검정 학생복 · 회색계열 옛 각진 책가방'},
+        {key:'high_memory_cap',name:'학생모 교복 + 책가방',desc:'中·高 학생모 · 검정교복 · 옛 책가방'},
+        {key:'high_memory_girl_uniform',name:'여학생 교복 + 책가방',desc:'단정한 여학생 교복 · 옛 하드형 책가방'},
+        {key:'high_memory_girl_cap',name:'여학생 학생모 + 책가방',desc:'여학생 교복 · 中·高 학생모 · 옛 책가방'},
+        {key:'high_memory_pe',name:'옛 체육복',desc:'70~80년대 운동장 · 복고 체육복'},
+        {key:'high_memory_album',name:'복고 졸업',desc:'옛 졸업앨범 · 교실·사진관 감성'}
+      ]
+    },
+
+    university: {
+      today:[
+        {key:'uni_today_gown',name:'학위가운 + 학사모',desc:'학위가운·학위증·꽃다발·캠퍼스'},
+        {key:'uni_today_modern',name:'현대 학위가운',desc:'세련된 학위가운·꽃다발'},
+        {key:'uni_today_hanbok',name:'한복 졸업',desc:'한복·꽃다발·캠퍼스'},
+        {key:'uni_today_formal',name:'정장 졸업',desc:'정장·학위증·꽃다발·캠퍼스'}
+      ],
+      dream:[],
+      memory:[
+        {key:'uni_memory_gown',name:'옛 학위사진',desc:'옛 졸업앨범 같은 학위사진'},
+        {key:'uni_memory_campus',name:'복고 캠퍼스',desc:'옛 캠퍼스·책·가방 분위기'}
+      ]
+    }
+  };
+
+  const state = {
+    face:null, faceName:'face.jpg', stage:'high', tab:'today',
+    lastKey:'', lastBlob:null, lastLabel:'', busy:false, timer:null, startedAt:0
+  };
+
+  const $ = id => document.getElementById(id);
+
+  let sb=null, sbReady=null, realtimeChannel=null, activeAdminRelay=null;
+  async function initSupabase(){
+    if(sb) return sb;
+    if(sbReady) return sbReady;
+    sbReady=(async()=>{
+      try{
+        const r=await fetch('/api/supabase-config',{cache:'no-store'});
+        const c=await r.json();
+        if(!r.ok||!c.url||!c.key) throw new Error(c.error||'Supabase 설정이 없습니다.');
+        if(!window.supabase?.createClient) throw new Error('Supabase 라이브러리를 불러오지 못했습니다.');
+        sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false}});
+        return sb;
+      }catch(e){ sbReady=null; throw e; }
+    })();
+    return sbReady;
+  }
+  async function requireSupabase(){
+    try{return await initSupabase()}catch(e){
+      alert('Supabase 연결이 필요합니다.\n\nVercel 환경변수 SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY와 SQL 설정을 확인하세요.');
+      throw e;
+    }
+  }
+
+  function setStatus(text, cls=''){
+    const el = $('status');
+    el.className = 'status' + (cls ? ' ' + cls : '');
+    el.textContent = text;
+    $('footerStatus').textContent = text || 'V24';
+  }
+
+  function hideViews(){ document.querySelectorAll('.home-view,.simple-view').forEach(v=>v.classList.remove('show')); }
+  function showView(id){ hideViews(); $(id).classList.add('show'); $('homeFooter').style.display = id==='homeView' ? 'flex' : 'none'; }
+  function openPanel(){ hideViews(); $('homeFooter').style.display='none'; $('panel').classList.add('show'); }
+  function closePanel(){ $('panel').classList.remove('show'); showView('myTimeView'); }
+
+  function updateModeTabs(){
+    const dreamTab = $('dreamTab');
+    const dreamAllowed = state.stage==='kindergarten' || state.stage==='elementary';
+    if(dreamTab){
+      dreamTab.hidden = !dreamAllowed;
+      dreamTab.disabled = !dreamAllowed;
+    }
+    if(!dreamAllowed && state.tab==='dream'){
+      state.tab='today';
+    }
+    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tab));
+  }
+
+  function renderCards(){
+    updateModeTabs();
+    const data = STAGE_CARDS[state.stage]?.[state.tab] || [];
+    $('cards').innerHTML = data.map((item,i)=>`
+      <button class="card ${state.lastKey===item.key ? 'selected' : ''}" data-key="${item.key}" data-name="${item.name}">
+        <div class="num">${String(i+1).padStart(2,'0')}</div>
+        <div>
+          <div class="card-name">${item.name}</div>
+          <div class="card-desc">${item.desc}</div>
+        </div>
+      </button>
+    `).join('');
+    [...$('cards').querySelectorAll('.card')].forEach(btn=>{
+      btn.addEventListener('click',()=>generate(btn.dataset.key, btn.dataset.name));
+    });
+  }
+
+  function showLoading(show, label='졸업사진'){
+    $('loadingTitle').textContent = `${label} 생성 중`;
+    $('loading').classList.toggle('show', show);
+    if(show){
+      state.startedAt = Date.now();
+      clearInterval(state.timer);
+      const tick = ()=>{
+        $('loadingTime').textContent = `${Math.floor((Date.now()-state.startedAt)/1000)}초`;
+      };
+      tick();
+      state.timer = setInterval(tick, 1000);
+    }else{
+      clearInterval(state.timer);
+      state.timer = null;
+    }
+  }
+
+  async function openDb(){
+    return await new Promise((resolve,reject)=>{
+      const req = indexedDB.open('time-relay-v23-6',2);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if(!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+        if(!db.objectStoreNames.contains('generated')) db.createObjectStore('generated');
+      };
+      req.onsuccess = ()=>resolve(req.result);
+      req.onerror = ()=>reject(req.error);
+    });
+  }
+  async function idbPut(db,store,key,val){ return await new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); tx.objectStore(store).put(val,key); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error);});}
+  async function idbGet(db,store,key){ return await new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const r=tx.objectStore(store).get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);});}
+
+
+  async function sha256Blob(blob){
+    const buf = await blob.arrayBuffer();
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function compressFace(file){
+    const url = URL.createObjectURL(file);
+    try{
+      const img = await new Promise((resolve,reject)=>{
+        const el = new Image();
+        el.onload=()=>resolve(el); el.onerror=reject; el.src=url;
+      });
+      const maxSide = 1024;
+      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext('2d',{alpha:false});
+      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      return await new Promise((resolve,reject)=>{
+        canvas.toBlob(b=>b?resolve(b):reject(new Error('얼굴 이미지 압축 실패')),'image/jpeg',0.86);
+      });
+    }finally{ URL.revokeObjectURL(url); }
+  }
+
+  async function blobToBase64(blob){
+    const buf = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary='';
+    const chunk=0x8000;
+    for(let i=0;i<bytes.length;i+=chunk){
+      binary += String.fromCharCode(...bytes.subarray(i,i+chunk));
+    }
+    return btoa(binary);
+  }
+
+  async function cacheKeyFor(key){
+    const faceHash = state.face ? await sha256Blob(state.face) : 'no-face';
+    return `v23.6:${faceHash}:${state.stage}:${key}`;
+  }
+
+  async function saveFace(file){
+    const compact = await compressFace(file);
+    state.face = compact;
+    state.faceName = 'face.jpg';
+    try{
+      const db = await openDb();
+      await idbPut(db,'kv','face',compact);
+    }catch(_){}
+    setStatus('✓ 얼굴 준비됨 · 카드를 선택하세요','ok');
+  }
+
+  async function restoreFace(){
+    try{
+      const db = await openDb();
+      const f = await idbGet(db,'kv','face');
+      if(f){ state.face = f; setStatus('✓ 얼굴 준비됨 · 카드를 선택하세요','ok'); }
+    }catch(_){}
+  }
+
+  function blobToDataURL(blob){
+    return new Promise((resolve,reject)=>{
+      const r = new FileReader();
+      r.onload = ()=>resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  }
+
+  async function setResult(blob){
+    state.lastBlob = blob;
+    const url = await blobToDataURL(blob);
+    $('resultBg').style.backgroundImage = `url(${url})`;
+    $('saveBtn').disabled = false;
+    $('regenBtn').disabled = !state.lastKey;
+  }
+
+  async function generate(key, label, force=false){
+    if(state.busy) return;
+    if(!state.face){
+      setStatus('얼굴을 먼저 등록하세요','err');
+      return;
+    }
+    state.busy = true;
+    setStatus('생성 중...', 'busy');
+    showLoading(true, label);
+    try{
+      const ckey = await cacheKeyFor(key);
+      if(!force){
+        try{
+          const db=await openDb();
+          const cached=await idbGet(db,'generated',ckey);
+          if(cached){
+            state.lastKey=key; state.lastLabel=label;
+            await setResult(cached);
+            renderCards(); closePanel();
+            setStatus(`✓ ${label} 즉시 불러옴`,'ok');
+            return;
+          }
+        }catch(_){}
+      }
+
+      const imageBase64 = await blobToBase64(state.face);
+      const res = await fetch('/api/generate-graduation', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          imageBase64,
+          mime:'image/jpeg',
+          stage:state.stage,
+          lookKey:key
+        })
+      });
+      const data = await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error(data.error || `생성 실패 (${res.status})`);
+      const bin = atob(data.imageBase64);
+      const arr = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+      const blob = new Blob([arr], {type:data.mime || 'image/jpeg'});
+      state.lastKey=key; state.lastLabel=label;
+      await setResult(blob);
+      try{ const db=await openDb(); await idbPut(db,'generated',ckey,blob); }catch(_){}
+      renderCards(); closePanel();
+      const sec=Math.max(1,Math.round((data.elapsedMs||0)/1000));
+      setStatus(`✓ ${label} 완성 · ${sec}초`,'ok');
+    }catch(err){
+      console.error(err);
+      setStatus(err.message || '오류가 발생했습니다','err');
+      alert((err.message||'오류가 발생했습니다')+'\n\nVercel 환경변수 OPENAI_API_KEY도 확인하세요.');
+    }finally{
+      state.busy=false;
+      showLoading(false);
+    }
+  }
+
+  async function saveCurrent(){
+    if(!state.lastBlob) return;
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(state.lastBlob);
+    a.href = url;
+    a.download = `time-relay-${state.stage}-${state.lastKey || 'graduation'}.jpg`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    setStatus('✓ 저장 완료','ok');
+  }
+
+
+  const RELAY_KEY='time-relay-v24-relays';
+  function relayStore(){ try{return JSON.parse(localStorage.getItem(RELAY_KEY)||'[]')}catch(_){return []} }
+  function saveRelayStore(v){ localStorage.setItem(RELAY_KEY, JSON.stringify(v)); }
+  function randId(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<8;i++) s+=a[Math.floor(Math.random()*a.length)]; return s; }
+  function showStandalone(id){ hideViews(); ['relayFormView','relayListView','joinView','relayAdminView'].forEach(x=>$(x)?.classList.remove('show')); $(id).classList.add('show'); $('homeFooter').style.display='none'; }
+  function defaultDeadline(){ const d=new Date(); d.setDate(d.getDate()+14); return d.toISOString().slice(0,10); }
+  function inviteUrl(r){ const u=new URL(location.href); u.search=''; u.hash=''; u.searchParams.set('join',r.id); return u.toString(); }
+  function openNewRelay(){ $('relayDeadline').value=defaultDeadline(); $('relayTitle').value=''; $('relayOwner').value=''; $('relayCoAdmins').value=''; $('relayNote').value='사진 한 장과 한 줄 메시지를 남겨주세요.'; showStandalone('relayFormView'); }
+
+  async function createRelay(){
+    const title=$('relayTitle').value.trim(), owner=$('relayOwner').value.trim();
+    if(!title){alert('릴레이 이름을 입력하세요.'); return}
+    if(!owner){alert('대표 방장을 입력하세요.'); return}
+    const client=await requireSupabase();
+    const r={id:randId(),type:$('relayType').value,title,deadline:$('relayDeadline').value||null,approval:$('relayApproval').value,owner,co_admins:$('relayCoAdmins').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,4),note:$('relayNote').value.trim(),status:'active'};
+    $('createRelayBtn').disabled=true; $('createRelayBtn').textContent='방 만드는 중…';
+    try{
+      const {error}=await client.from('relays').insert(r);
+      if(error) throw error;
+      const all=relayStore(); all.unshift({id:r.id}); saveRelayStore(all);
+      alert('릴레이 방을 만들었습니다. 초대 링크를 보내세요.');
+      await showRelayList('active');
+    }catch(e){console.error(e); alert('방 생성 실패: '+(e.message||e));}
+    finally{$('createRelayBtn').disabled=false; $('createRelayBtn').textContent='릴레이 방 만들기';}
+  }
+
+  async function copyText(t){ try{await navigator.clipboard.writeText(t); alert('초대 링크를 복사했습니다.')}catch(_){prompt('아래 링크를 복사하세요.',t)} }
+
+  async function getMyRelays(){
+    const ids=relayStore().map(x=>x.id).filter(Boolean);
+    if(!ids.length) return [];
+    const client=await requireSupabase();
+    const {data,error}=await client.from('relays').select('*').in('id',ids).order('created_at',{ascending:false});
+    if(error) throw error;
+    return data||[];
+  }
+
+  async function showRelayList(mode='active'){
+    $('relayListTitle').textContent=mode==='completed'?'완성본':'참여 중';
+    const host=$('relayList'); host.innerHTML='<div class="simple-note">불러오는 중…</div>'; showStandalone('relayListView');
+    try{
+      const all=(await getMyRelays()).filter(r=>mode==='completed'?r.status==='completed':r.status!=='completed');
+      host.innerHTML='';
+      if(!all.length){ host.innerHTML='<div class="simple-note">아직 표시할 릴레이가 없습니다.</div>'; return; }
+      for(const r of all){
+        const client=await requireSupabase();
+        const {count}=await client.from('entries').select('id',{count:'exact',head:true}).eq('relay_id',r.id);
+        const div=document.createElement('div'); div.className='relay-card';
+        const admins=[r.owner,...(r.co_admins||[])].join(' · ');
+        div.innerHTML=`<div class="mode-badge">${esc(r.type)}</div><h3>${esc(r.title)}</h3><div class="relay-meta">방장 ${esc(admins)}<br>마감 ${r.deadline||'미정'} · 참여 ${count||0}명 · 코드 ${r.id}</div><div class="invite-box"><div class="invite-link">${inviteUrl(r)}</div></div><div class="relay-actions"><button class="mini-btn" data-copy>초대 링크 복사</button><button class="mini-btn" data-manage>참여자 LIVE</button><button class="mini-btn" data-open>참여 화면 보기</button><button class="mini-btn" data-complete>${r.status==='completed'?'완성됨':'완성 처리'}</button></div>`;
+        div.querySelector('[data-copy]').onclick=()=>copyText(inviteUrl(r));
+        div.querySelector('[data-manage]').onclick=()=>openRelayAdmin(r);
+        div.querySelector('[data-open]').onclick=()=>openJoin(r);
+        div.querySelector('[data-complete]').onclick=async()=>{
+          if(r.status==='completed') return;
+          if(!confirm('이 릴레이를 완성 처리할까요?')) return;
+          const {error}=await client.from('relays').update({status:'completed',completed_at:new Date().toISOString()}).eq('id',r.id);
+          if(error) alert(error.message); else showRelayList('active');
+        };
+        host.appendChild(div);
+      }
+    }catch(e){console.error(e); host.innerHTML=`<div class="simple-note">Supabase 연결 오류<br>${esc(e.message||String(e))}</div>`;}
+  }
+
+  function esc(v=''){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+  async function fetchRelay(id){
+    const client=await requireSupabase();
+    const {data,error}=await client.from('relays').select('*').eq('id',id).single();
+    if(error) throw error; return data;
+  }
+
+  async function openJoin(rOrId){
+    try{
+      const r=typeof rOrId==='string'?await fetchRelay(rOrId):rOrId;
+      state.joinRelay=r; $('joinType').textContent=r.type||'모임'; $('joinTitle').textContent=r.title||'릴레이'; $('joinDeadline').textContent=`마감 ${r.deadline||'미정'} · ${r.note||''}`; $('joinName').value=''; $('joinMessage').value=''; $('joinFuture').value=''; $('joinPhoto').value=''; showStandalone('joinView');
+    }catch(e){alert('릴레이를 찾을 수 없습니다. 링크가 만료되었거나 설정을 확인하세요.'); showView('homeView');}
+  }
+
+  async function compressRelayPhoto(file){
+    const bmp=await createImageBitmap(file);
+    const max=1600, scale=Math.min(1,max/Math.max(bmp.width,bmp.height));
+    const c=document.createElement('canvas'); c.width=Math.round(bmp.width*scale); c.height=Math.round(bmp.height*scale);
+    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height); bmp.close?.();
+    return await new Promise(res=>c.toBlob(res,'image/jpeg',0.82));
+  }
+
+  async function submitJoin(){
+    const r=state.joinRelay, name=$('joinName').value.trim(), msg=$('joinMessage').value.trim();
+    if(!r||!name||!msg){alert('이름과 한 줄 메시지를 입력하세요.'); return}
+    const client=await requireSupabase();
+    const btn=$('submitJoinBtn'); btn.disabled=true; btn.textContent='제출 중…';
+    try{
+      let photoPath=null, photoUrl=null;
+      const f=$('joinPhoto').files?.[0];
+      if(f){
+        const blob=await compressRelayPhoto(f);
+        const fname=`${r.id}/${crypto.randomUUID()}.jpg`;
+        const {error:upErr}=await client.storage.from('relay-photos').upload(fname,blob,{contentType:'image/jpeg',upsert:false});
+        if(upErr) throw upErr;
+        photoPath=fname;
+        photoUrl=client.storage.from('relay-photos').getPublicUrl(fname).data.publicUrl;
+      }
+      const status=r.approval==='approval'?'pending':'approved';
+      const {error}=await client.from('entries').insert({relay_id:r.id,name,message:msg,future_message:$('joinFuture').value.trim(),photo_path:photoPath,photo_url:photoUrl,status});
+      if(error) throw error;
+      alert(r.approval==='approval'?'제출 완료! 방장 승인 후 릴레이에 반영됩니다.':'참여 완료! 방장 화면에 바로 반영됩니다.');
+      showView('homeView');
+    }catch(e){console.error(e); alert('제출 실패: '+(e.message||e));}
+    finally{btn.disabled=false; btn.textContent='릴레이에 참여하기';}
+  }
+
+  function renderEntries(rows){
+    const host=$('relayEntries'); host.innerHTML='';
+    if(!rows?.length){host.innerHTML='<div class="simple-note">아직 참여자가 없습니다. 초대 링크를 보내보세요.</div>';return;}
+    rows.forEach(x=>{
+      const el=document.createElement('div'); el.className='entry-card';
+      const photo=x.photo_url?`<img class="entry-photo" src="${esc(x.photo_url)}" alt="">`:`<div class="entry-photo empty">사진 없음</div>`;
+      const dt=x.submitted_at?new Date(x.submitted_at).toLocaleString('ko-KR'):'';
+      el.innerHTML=`${photo}<div><div class="entry-name">${esc(x.name)} <span class="mode-badge">${x.status==='approved'?'승인':'대기'}</span></div><div class="entry-msg">${esc(x.message)}</div><div class="entry-meta">${esc(dt)}</div></div>`;
+      host.appendChild(el);
+    });
+  }
+
+  async function loadRelayEntries(relayId){
+    const client=await requireSupabase();
+    const {data,error}=await client.from('entries').select('*').eq('relay_id',relayId).order('submitted_at',{ascending:true});
+    if(error) throw error; renderEntries(data||[]); return data||[];
+  }
+
+  async function openRelayAdmin(r){
+    activeAdminRelay=r; $('relayAdminTitle').textContent=r.title; $('relayAdminSub').textContent=`${r.type} · 참여자 실시간 수집`; $('relayLiveState').textContent='참여자 목록을 불러오는 중…'; showStandalone('relayAdminView');
+    const client=await requireSupabase();
+    await loadRelayEntries(r.id);
+    if(realtimeChannel){ await client.removeChannel(realtimeChannel); realtimeChannel=null; }
+    realtimeChannel=client.channel(`relay-${r.id}`)
+      .on('postgres_changes',{event:'*',schema:'public',table:'entries',filter:`relay_id=eq.${r.id}`},async payload=>{
+        $('relayLiveState').textContent=`새 제출 반영 · ${new Date().toLocaleTimeString('ko-KR')}`;
+        await loadRelayEntries(r.id);
+      })
+      .subscribe(status=>{
+        $('relayLiveState').textContent=status==='SUBSCRIBED'?'실시간 연결됨 · 새 제출이 자동 표시됩니다.':`연결 상태: ${status}`;
+      });
+  }
+
+  // events
+  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
+  document.querySelectorAll('[data-home]').forEach(btn=>btn.addEventListener('click',()=>showView('homeView')));
+  document.querySelectorAll('[data-personal]').forEach(btn=>btn.addEventListener('click',()=>{
+    const mode=btn.dataset.personal;
+    state.tab=mode;
+    if(mode==='dream' && !(state.stage==='kindergarten'||state.stage==='elementary')) state.stage='elementary';
+    $('stageSelect').value=state.stage;
+    updateModeTabs(); renderCards(); openPanel();
+    setStatus(state.face ? '✓ 얼굴 준비됨 · 카드를 선택하세요' : '얼굴 등록 → 학령 선택 → 카드 선택', state.face ? 'ok' : '');
+  }));
+  document.querySelectorAll('[data-proto]').forEach(btn=>btn.addEventListener('click',()=>{ alert(`${btn.dataset.proto} 기능은 다음 단계에서 연결합니다.`); }));
+  $('newRelayBtn').addEventListener('click', openNewRelay);
+  $('activeRelayBtn').addEventListener('click', ()=>showRelayList('active'));
+  $('completedRelayBtn').addEventListener('click', ()=>showRelayList('completed'));
+  $('relayFormBack').addEventListener('click', ()=>showView('relayView'));
+  $('relayListBack').addEventListener('click', ()=>showView('relayView'));
+  $('relayAdminBack').addEventListener('click', async ()=>{ try{if(realtimeChannel&&sb){await sb.removeChannel(realtimeChannel);realtimeChannel=null;}}catch(_){} showRelayList('active'); });
+  $('joinBack').addEventListener('click', ()=>showView('relayView'));
+  $('createRelayBtn').addEventListener('click', createRelay);
+  $('submitJoinBtn').addEventListener('click', submitJoin);
+  $('closeBtn').addEventListener('click', closePanel);
+  $('saveBtn').addEventListener('click', saveCurrent);
+  $('regenBtn').addEventListener('click', ()=> state.lastKey && generate(state.lastKey, state.lastLabel, true));
+  $('faceInput').addEventListener('change', async e=>{
+    const file = e.target.files?.[0];
+    if(file) await saveFace(file);
+    e.target.value = '';
+  });
+  $('stageSelect').addEventListener('change', e=>{
+    state.stage = e.target.value;
+    state.tab = 'today';
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab==='today'));
+    renderCards();
+    setStatus(state.face ? '✓ 얼굴 준비됨 · 카드를 선택하세요' : '얼굴 등록 → 학령 선택 → 카드 선택', state.face ? 'ok' : '');
+  });
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.disabled || btn.hidden) return;
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+      state.tab = btn.dataset.tab;
+      renderCards();
+    });
+  });
+
+  const joinParam=new URL(location.href).searchParams.get('join');
+  if(joinParam){ setTimeout(()=>openJoin(joinParam),0); }
+
+  initSupabase().catch(e=>console.warn('Supabase not configured:',e.message));
+
+  const d=new Date(); const mon=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][d.getMonth()]; const day=['SUN','MON','TUE','WED','THU','FRI','SAT'][d.getDay()]; $('datePill').textContent=`${d.getFullYear()} ${mon}  |  ${day} ${String(d.getDate()).padStart(2,'0')}`;
+  restoreFace().then(renderCards);
+})();
+</script>
+</body>
+</html>
