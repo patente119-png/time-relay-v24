@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TIME RELAY · V24.2 Supabase Realtime</title>
+<title>TIME RELAY · V24.2.5 Button Fix</title>
 <style>
   :root{
     --bg:#020817; --panel:#071428; --panel2:#0b1830; --line:#29405f; --text:#f8fafc; --muted:#9fb2cb;
@@ -16,8 +16,8 @@
     position:relative;width:min(92vw,540px);aspect-ratio:1/1.12;border-radius:48px;overflow:hidden;
     background:#021124;box-shadow:0 30px 70px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.2)
   }
-  .result-bg{position:absolute;inset:0;background:#0b1220 center/cover no-repeat}
-  .result-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.18) 55%,rgba(2,8,23,.55) 78%,rgba(2,8,23,.85))}
+  .result-bg{position:absolute;inset:0;background:#0b1220 center/cover no-repeat;pointer-events:none}
+  .result-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.18) 55%,rgba(2,8,23,.55) 78%,rgba(2,8,23,.85));pointer-events:none}
   .brand{position:absolute;left:18px;top:18px;z-index:5;font-size:16px;font-weight:900;letter-spacing:.4px;text-shadow:0 2px 8px rgba(0,0,0,.45)}
   .open-btn{
     position:absolute;right:18px;top:18px;z-index:5;
@@ -67,11 +67,11 @@
   .card-name{font-size:18px;font-weight:900;line-height:1.15;margin-top:10px}
   .card-desc{font-size:13px;color:#c6d4e8;margin-top:4px;line-height:1.35}
   .bottom-actions{
-    position:absolute;left:18px;right:18px;bottom:24px;z-index:6;display:flex;gap:12px
+    position:absolute;left:18px;right:18px;bottom:24px;z-index:40;display:flex;gap:12px;pointer-events:auto
   }
   .action{
     flex:1;height:54px;border-radius:16px;border:1px solid rgba(250,204,21,.7);background:rgba(3,10,28,.82);color:#fff;
-    font-size:20px;font-weight:900;cursor:pointer;backdrop-filter:blur(3px)
+    font-size:20px;font-weight:900;cursor:pointer;backdrop-filter:blur(3px);position:relative;z-index:41;pointer-events:auto;touch-action:manipulation
   }
   .action.secondary{border-color:rgba(148,163,184,.38)}
   .action:disabled{opacity:.45;cursor:not-allowed}
@@ -429,6 +429,12 @@
   }
   function openPanel(){ hideViews(); $('homeFooter').style.display='none'; $('panel').classList.add('show'); }
   function closePanel(){ $('panel').classList.remove('show'); showView('myTimeView'); }
+  function showResultView(){
+    hideViews();
+    $('panel').classList.remove('show');
+    $('loading').classList.remove('show');
+    $('homeFooter').style.display='none';
+  }
 
   function updateModeTabs(){
     const dreamTab = $('dreamTab');
@@ -591,7 +597,7 @@
           if(cached){
             state.lastKey=key; state.lastLabel=label;
             await setResult(cached);
-            renderCards(); closePanel();
+            renderCards(); showResultView();
             setStatus(`✓ ${label} 즉시 불러옴`,'ok');
             return;
           }
@@ -618,7 +624,7 @@
       state.lastKey=key; state.lastLabel=label;
       await setResult(blob);
       try{ const db=await openDb(); await idbPut(db,'generated',ckey,blob); }catch(_){}
-      renderCards(); closePanel();
+      renderCards(); showResultView();
       const sec=Math.max(1,Math.round((data.elapsedMs||0)/1000));
       setStatus(`✓ ${label} 완성 · ${sec}초`,'ok');
     }catch(err){
@@ -632,13 +638,16 @@
   }
 
   async function saveCurrent(){
-    if(!state.lastBlob) return;
-    const a = document.createElement('a');
+    if(!state.lastBlob){ setStatus('저장할 사진이 없습니다','err'); return; }
     const url = URL.createObjectURL(state.lastBlob);
+    const a = document.createElement('a');
     a.href = url;
     a.download = `time-relay-${state.stage}-${state.lastKey || 'graduation'}.jpg`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
     setStatus('✓ 저장 완료','ok');
   }
 
@@ -810,8 +819,8 @@
   $('createRelayBtn').addEventListener('click', createRelay);
   $('submitJoinBtn').addEventListener('click', submitJoin);
   $('closeBtn').addEventListener('click', closePanel);
-  $('saveBtn').addEventListener('click', saveCurrent);
-  $('regenBtn').addEventListener('click', ()=> state.lastKey && generate(state.lastKey, state.lastLabel, true));
+  $('saveBtn').addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); saveCurrent(); });
+  $('regenBtn').addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); if(state.lastKey && !state.busy) generate(state.lastKey, state.lastLabel, true); });
   $('faceInput').addEventListener('change', async e=>{
     const file = e.target.files?.[0];
     if(file) await saveFace(file);

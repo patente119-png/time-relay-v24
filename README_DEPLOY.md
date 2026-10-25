@@ -1,27 +1,11 @@
-# TIME RELAY V24.2.3 COMPLETE API
+# TIME RELAY V24.2.5 — Save / Regenerate Button Fix
 
-This package fixes the missing Vercel API folder in V24.2.2.
+Changes:
+- Fixed transparent `나의 시간` layer intercepting result-screen clicks.
+- Result screen now closes all navigation overlays after generation.
+- Save / Regenerate buttons raised above decorative layers.
+- Decorative result layers ignore pointer events.
+- Save download action hardened by attaching the temporary anchor to the document.
+- Keeps V24.2.4 root deployment structure and APIs.
 
-Included:
-- index.html
-- api/health.js
-- api/supabase-config.js
-- api/generate-graduation.js
-- package.json
-- vercel.json
-- ENV_TEMPLATE.txt
-
-Required Vercel environment variables:
-- OPENAI_API_KEY
-- OPENAI_IMAGE_MODEL=gpt-image-2
-- OPENAI_IMAGE_SIZE=1024x1024
-- OPENAI_IMAGE_QUALITY=low
-- OPENAI_IMAGE_COMPRESSION=72
-- SUPABASE_URL
-- SUPABASE_PUBLISHABLE_KEY
-
-After deployment test:
-1. /api/health
-2. /api/supabase-config
-3. App > 나의 시간 > generate an image
-4. App > 우리의 릴레이 > 새 릴레이
+Deploy at GitHub repository root and keep Vercel Root Directory as `./`.
