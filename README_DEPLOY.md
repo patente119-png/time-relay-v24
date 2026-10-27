@@ -1,4 +1,4 @@
-# TIME RELAY V24.3.3 — Exact Face Lock + Confirmed Drill Style
+# TIME RELAY V24.3.4 — Exact Face Lock + Confirmed Drill Style
 
 이번 버전은 결과 품질 고정 버전입니다.
 
@@ -12,3 +12,10 @@
 ## 배포
 압축을 풀고 내부 파일들을 GitHub 저장소 루트에 덮어쓴 뒤 Commit하세요.
 Vercel Root Directory는 `./` 그대로 유지합니다.
+
+
+## V24.3.4 Mobile Home Fix
+- 결과 전용 다시 만들기/저장 버튼은 result-mode에서만 표시
+- 모바일 body 상단 정렬로 초기 화면이 아래로 밀리는 현상 수정
+- 모바일 홈 메뉴 간격과 하단 날짜/RELAY 영역 재배치
+- 홈 화면 터치 가로막는 결과 버튼 레이어 제거

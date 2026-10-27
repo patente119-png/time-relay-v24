@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TIME RELAY · V24.3.3 Face Lock</title>
+<title>TIME RELAY · V24.3.4 Mobile Home Fix</title>
 <style>
   :root{
     --bg:#020817; --panel:#071428; --panel2:#0b1830; --line:#29405f; --text:#f8fafc; --muted:#9fb2cb;
@@ -67,8 +67,9 @@
   .card-name{font-size:18px;font-weight:900;line-height:1.15;margin-top:10px}
   .card-desc{font-size:13px;color:#c6d4e8;margin-top:4px;line-height:1.35}
   .bottom-actions{
-    position:absolute;left:18px;right:18px;bottom:24px;z-index:40;display:flex;gap:12px;pointer-events:auto
+    position:absolute;left:18px;right:18px;bottom:24px;z-index:40;display:none;gap:12px;pointer-events:auto
   }
+  .frame.result-mode .bottom-actions{display:flex}
   .action{
     flex:1;height:54px;border-radius:16px;border:1px solid rgba(250,204,21,.7);background:rgba(3,10,28,.82);color:#fff;
     font-size:20px;font-weight:900;cursor:pointer;backdrop-filter:blur(3px);position:relative;z-index:41;pointer-events:auto;touch-action:manipulation
@@ -138,12 +139,22 @@
   .connection-note{font-size:12px;color:#9fb2cb;margin:2px 0 14px;line-height:1.5}
 
   @media (max-width:520px){
-    body{padding:8px}
-    .frame{width:100%;border-radius:40px}
+    html,body{min-height:100%;height:auto}
+    body{padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom));align-items:flex-start;justify-content:center;overflow-x:hidden}
+    .frame{width:100%;max-width:540px;border-radius:34px;min-height:0}
+    .home-view,.simple-view{padding:42px 20px 74px}
+    .home-copy{margin-top:4%;margin-bottom:20px}
+    .home-logo{font-size:28px}
+    .home-tag{font-size:12px;margin-top:6px}
+    .menu-stack{width:min(100%,330px);gap:10px;margin-top:4px}
+    .menu-main{height:54px;font-size:17px;border-radius:15px;touch-action:manipulation}
+    .home-mini{display:none}
+    .home-footer{left:16px;right:16px;bottom:10px;font-size:11px;gap:8px}
+    .date-pill{padding:7px 9px;white-space:nowrap}
     .cards{grid-template-columns:1fr}
     .card{min-height:120px}
     .card-name{font-size:17px}
-    .bottom-actions{bottom:18px}
+    .bottom-actions{left:12px;right:12px;bottom:12px}
     .action{height:50px;font-size:18px}
   }
 </style>
