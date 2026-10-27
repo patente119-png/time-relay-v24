@@ -1,872 +1,972 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TIME RELAY · V24.2.5 Button Fix</title>
-<style>
-  :root{
-    --bg:#020817; --panel:#071428; --panel2:#0b1830; --line:#29405f; --text:#f8fafc; --muted:#9fb2cb;
-    --cyan:#38bdf8; --cyan2:#67e8f9; --gold:#facc15; --green:#86efac; --red:#fca5a5;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;background:#020b1f;color:var(--text)}
-  body{display:flex;align-items:center;justify-content:center;padding:18px}
-  .frame{
-    position:relative;width:min(92vw,540px);aspect-ratio:1/1.12;border-radius:48px;overflow:hidden;
-    background:#021124;box-shadow:0 30px 70px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.2)
-  }
-  .result-bg{position:absolute;inset:0;background:#0b1220 center/cover no-repeat;pointer-events:none}
-  .result-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.18) 55%,rgba(2,8,23,.55) 78%,rgba(2,8,23,.85));pointer-events:none}
-  .brand{position:absolute;left:18px;top:18px;z-index:5;font-size:16px;font-weight:900;letter-spacing:.4px;text-shadow:0 2px 8px rgba(0,0,0,.45)}
-  .open-btn{
-    position:absolute;right:18px;top:18px;z-index:5;
-    height:42px;padding:0 16px;border-radius:14px;border:1px solid rgba(103,232,249,.45);
-    background:rgba(5,112,153,.46);color:#fff;font-weight:900;cursor:pointer
-  }
-  .panel{
-    position:absolute;left:18px;right:18px;top:18px;bottom:18px;z-index:10;display:none;
-    border-radius:26px;overflow:hidden;border:1px solid rgba(148,163,184,.28);
-    background:rgba(2,10,24,.96);backdrop-filter:blur(4px)
-  }
-  .panel.show{display:flex;flex-direction:column}
-  .panel-head{padding:18px 18px 12px;border-bottom:1px solid rgba(148,163,184,.18);background:linear-gradient(180deg,#071527,#08192f)}
-  .title-row{display:flex;align-items:center;gap:10px}
-  .title{font-size:18px;font-weight:900;flex:1}
-  .sub{font-size:12px;color:var(--muted);margin-top:4px}
-  .head-btn,.face-label{
-    height:38px;padding:0 14px;border-radius:12px;border:1px solid rgba(148,163,184,.3);
-    background:#0d1930;color:#fff;font-weight:800;cursor:pointer
-  }
-  .face-label{display:inline-flex;align-items:center;border-color:rgba(103,232,249,.45);color:#cffafe}
-  .status{padding:10px 18px 0;font-size:13px;color:var(--muted);min-height:28px}
-  .status.ok{color:var(--green)} .status.err{color:var(--red)} .status.busy{color:#7dd3fc}
-  .controls{padding:10px 18px 14px;background:#071325;border-bottom:1px solid rgba(148,163,184,.16)}
-  .stage-row{display:flex;gap:10px;align-items:center}
-  .stage-row span{font-size:13px;font-weight:700;color:#cbd5e1}
-  select{
-    flex:1;height:40px;border-radius:12px;border:1px solid var(--line);background:#0c1730;color:#fff;
-    padding:0 12px;font-size:14px;font-weight:700
-  }
-  .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-  .tab{
-    height:42px;border-radius:13px;border:1px solid var(--line);background:#0b1730;color:#fff;
-    font-size:14px;font-weight:900;cursor:pointer
-  }
-  .tab.active{background:#154b67;border-color:#67e8f9}
-  .cards{
-    flex:1;overflow:auto;padding:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start;background:#031121
-  }
-  .card{
-    border-radius:18px;border:1px solid rgba(90,120,160,.32);background:linear-gradient(180deg,#0a1630,#08142a);padding:14px;min-height:126px;
-    cursor:pointer;display:flex;flex-direction:column;justify-content:space-between
-  }
-  .card:hover{border-color:#67e8f9}
-  .card.selected{border-color:var(--gold);box-shadow:0 0 0 1px rgba(250,204,21,.14) inset}
-  .num{font-size:20px;font-weight:900;color:#67e8f9}
-  .card-name{font-size:18px;font-weight:900;line-height:1.15;margin-top:10px}
-  .card-desc{font-size:13px;color:#c6d4e8;margin-top:4px;line-height:1.35}
-  .bottom-actions{
-    position:absolute;left:18px;right:18px;bottom:24px;z-index:40;display:flex;gap:12px;pointer-events:auto
-  }
-  .action{
-    flex:1;height:54px;border-radius:16px;border:1px solid rgba(250,204,21,.7);background:rgba(3,10,28,.82);color:#fff;
-    font-size:20px;font-weight:900;cursor:pointer;backdrop-filter:blur(3px);position:relative;z-index:41;pointer-events:auto;touch-action:manipulation
-  }
-  .action.secondary{border-color:rgba(148,163,184,.38)}
-  .action:disabled{opacity:.45;cursor:not-allowed}
-  .footer{position:absolute;left:18px;right:18px;bottom:8px;z-index:4;font-size:13px;color:#d5e2f2;display:flex;justify-content:space-between;opacity:.92}
-  .overlay{
-    position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.75);backdrop-filter:blur(4px)
-  }
-  .overlay.show{display:flex}
-  .loader-box{
-    width:min(86vw,330px);border-radius:18px;background:#071428;border:1px solid rgba(103,232,249,.36);padding:18px;text-align:center
-  }
-  .loader-title{font-size:19px;font-weight:900}
-  .loader-sub{font-size:13px;color:#cbd5e1;margin-top:10px;line-height:1.45}
-  .loader-time{font-size:26px;font-weight:900;color:#67e8f9;margin-top:10px}
-
-  .star-layer{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.78;background-image:radial-gradient(circle at 12% 18%,rgba(255,255,255,.95) 0 1px,transparent 1.5px),radial-gradient(circle at 72% 16%,rgba(125,211,252,.9) 0 1px,transparent 1.5px),radial-gradient(circle at 38% 42%,rgba(255,255,255,.8) 0 1px,transparent 1.5px),radial-gradient(circle at 82% 58%,rgba(255,255,255,.75) 0 1px,transparent 1.5px),radial-gradient(circle at 20% 76%,rgba(103,232,249,.8) 0 1px,transparent 1.5px);background-size:64px 64px,93px 93px,117px 117px,139px 139px,171px 171px}
-  .home-view,.simple-view{position:absolute;inset:0;z-index:7;padding:72px 28px 62px;display:none;flex-direction:column;align-items:center}
-  .home-view.show,.simple-view.show{display:flex}
-  .home-copy{text-align:center;margin-top:10%;margin-bottom:30px}
-  .home-logo{font-size:30px;font-weight:950;letter-spacing:1.6px}
-  .home-tag{font-size:13px;color:#b8c9dd;margin-top:8px}
-  .menu-stack{width:min(100%,310px);display:grid;gap:12px;margin-top:8px}
-  .menu-main{height:58px;border:1px solid rgba(103,232,249,.36);border-radius:16px;background:rgba(7,20,40,.88);color:#fff;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.18)}
-  .menu-main:active{transform:translateY(1px)}
-  .menu-main.primary{border-color:rgba(103,232,249,.65);background:rgba(10,52,78,.88)}
-  .home-mini{margin-top:auto;display:flex;gap:18px;font-size:12px;color:#9fb2cb}
-  .view-head{width:100%;display:flex;align-items:center;gap:10px;margin-bottom:22px}
-  .back-btn{width:42px;height:42px;border-radius:13px;border:1px solid rgba(148,163,184,.3);background:#0a1730;color:#fff;font-size:20px;cursor:pointer}
-  .result-back{position:absolute;left:18px;top:18px;z-index:45;width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.34);background:rgba(3,13,30,.82);color:#fff;font-size:22px;font-weight:900;cursor:pointer;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);pointer-events:auto}
-  .result-back.show{display:flex}
-  .view-title{font-size:20px;font-weight:900}
-  .view-sub{font-size:12px;color:#9fb2cb;margin-top:2px}
-  .simple-note{margin-top:18px;font-size:12px;color:#8fa5bf;text-align:center;line-height:1.55;max-width:320px}
-  .home-footer{position:absolute;left:22px;right:22px;bottom:14px;z-index:8;display:flex;align-items:center;justify-content:space-between;color:#d5e2f2;font-size:12px}
-  .date-pill{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:8px 12px;background:rgba(2,10,24,.78);font-weight:800}
-
-  .relay-form-view,.relay-list-view,.join-view{position:absolute;inset:0;z-index:12;padding:62px 22px 28px;display:none;flex-direction:column;background:rgba(2,8,23,.97);overflow:auto}
-  .relay-form-view.show,.relay-list-view.show,.join-view.show{display:flex}
-  .form-grid{display:grid;gap:10px;width:100%;margin-top:4px}
-  .field{display:grid;gap:6px}
-  .field label{font-size:12px;color:#a9bad0;font-weight:800}
-  .field input,.field select,.field textarea{width:100%;border:1px solid #29405f;border-radius:12px;background:#0a1730;color:#fff;padding:11px 12px;font:inherit}
-  .field textarea{min-height:74px;resize:vertical}
-  .small-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .primary-wide{width:100%;height:52px;border:1px solid rgba(103,232,249,.6);border-radius:15px;background:#0b3b57;color:#fff;font-size:16px;font-weight:900;cursor:pointer;margin-top:8px}
-  .ghost-wide{width:100%;height:46px;border:1px solid rgba(148,163,184,.34);border-radius:14px;background:#0a1730;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
-  .relay-card{border:1px solid rgba(148,163,184,.28);background:#08162d;border-radius:16px;padding:14px;margin-bottom:10px}
-  .relay-card h3{margin:0 0 6px;font-size:16px}.relay-meta{font-size:12px;color:#9fb2cb;line-height:1.55}.relay-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .mini-btn{height:36px;padding:0 11px;border-radius:10px;border:1px solid rgba(103,232,249,.35);background:#0b2740;color:#fff;font-size:12px;font-weight:800;cursor:pointer}
-  .invite-box{margin-top:14px;border:1px dashed rgba(103,232,249,.5);border-radius:14px;padding:12px;background:#06172a}.invite-link{font-size:12px;color:#cffafe;word-break:break-all;line-height:1.45}.mode-badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#11233e;color:#b8d8f4;font-size:11px;font-weight:800;margin-bottom:8px}
-  .notice{font-size:12px;color:#9fb2cb;line-height:1.55;margin-top:10px}.notice strong{color:#f8fafc}
-  .join-title{font-size:22px;font-weight:950;margin-bottom:4px}.join-sub{font-size:12px;color:#9fb2cb;margin-bottom:18px}
-
-
-  .relay-admin-view{position:absolute;inset:0;z-index:13;padding:62px 22px 28px;display:none;flex-direction:column;background:rgba(2,8,23,.98);overflow:auto}
-  .relay-admin-view.show{display:flex}
-  .live-pill{display:inline-flex;align-items:center;gap:7px;padding:5px 9px;border-radius:999px;background:#082b26;color:#86efac;font-size:11px;font-weight:900;border:1px solid rgba(134,239,172,.28)}
-  .live-dot{width:7px;height:7px;border-radius:50%;background:#86efac;box-shadow:0 0 8px rgba(134,239,172,.8)}
-  .entry-card{display:grid;grid-template-columns:68px 1fr;gap:12px;padding:12px;border:1px solid rgba(148,163,184,.26);border-radius:15px;background:#08162d;margin-bottom:10px}
-  .entry-photo{width:68px;height:68px;border-radius:12px;object-fit:cover;background:#0d1a2e;border:1px solid rgba(148,163,184,.22)}
-  .entry-photo.empty{display:flex;align-items:center;justify-content:center;color:#6f87a6;font-size:11px}
-  .entry-name{font-weight:900;font-size:15px}.entry-msg{font-size:13px;color:#d5e2f2;margin-top:4px;line-height:1.4}.entry-meta{font-size:11px;color:#8fa5bf;margin-top:6px}
-  .connection-note{font-size:12px;color:#9fb2cb;margin:2px 0 14px;line-height:1.5}
-
-  @media (max-width:520px){
-    body{padding:8px}
-    .frame{width:100%;border-radius:40px}
-    .cards{grid-template-columns:1fr}
-    .card{min-height:120px}
-    .card-name{font-size:17px}
-    .bottom-actions{bottom:18px}
-    .action{height:50px;font-size:18px}
-  }
-</style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>낙타등 도로 | 염하강 3D 시뮬레이션 V3</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    * { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #38bdf8; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", Roboto, sans-serif; user-select: none; }
+    #canvas-container { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 0 !important; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .glass-panel { background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55); }
+    .control-drawer { transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1); will-change: transform; }
+    .slider-accent { accent-color: #10b981; }
+  </style>
 </head>
-<body>
-<div class="frame">
-  <div class="result-bg" id="resultBg"></div>
-  <div class="star-layer"></div>
-  <button class="result-back" id="resultBackBtn" aria-label="이전 선택 화면으로 돌아가기">←</button>
+<body class="text-white">
 
-  <div class="home-view show" id="homeView">
-    <div class="home-copy">
-      <div class="home-logo">TIME RELAY</div>
-      <div class="home-tag">시간을 건너, 나를 다시 만나다</div>
-    </div>
-    <div class="menu-stack">
-      <button class="menu-main primary" data-view="myTimeView">나의 시간</button>
-      <button class="menu-main" data-view="relayView">우리의 릴레이</button>
-      <button class="menu-main" data-view="capsuleView">타임캡슐</button>
-    </div>
-    <div class="home-mini"><span>알림</span><span>설정</span></div>
-  </div>
+  <div id="canvas-container"></div>
 
-  <div class="simple-view" id="myTimeView">
-    <div class="view-head"><button class="back-btn" data-home>←</button><div><div class="view-title">나의 시간</div><div class="view-sub">한 가지를 선택하세요</div></div></div>
-    <div class="menu-stack">
-      <button class="menu-main primary" data-personal="today">오늘의 졸업</button>
-      <button class="menu-main" data-personal="dream">꿈꾸는 나</button>
-      <button class="menu-main" data-personal="memory">그 시절</button>
-    </div>
-  </div>
-
-  <div class="simple-view" id="relayView">
-    <div class="view-head"><button class="back-btn" data-home>←</button><div><div class="view-title">우리의 릴레이</div><div class="view-sub">함께 남기는 시간</div></div></div>
-    <div class="menu-stack">
-      <button class="menu-main primary" id="newRelayBtn">새 릴레이</button>
-      <button class="menu-main" id="activeRelayBtn">참여 중</button>
-      <button class="menu-main" id="completedRelayBtn">완성본</button>
-    </div>
-    <div class="simple-note">방 생성·초대·사진 제출·참여자 실시간 수집까지 Supabase로 연결됩니다.</div>
-  </div>
-
-  <div class="simple-view" id="capsuleView">
-    <div class="view-head"><button class="back-btn" data-home>←</button><div><div class="view-title">타임캡슐</div><div class="view-sub">미래로 보내는 기록</div></div></div>
-    <div class="menu-stack">
-      <button class="menu-main primary" data-proto="나의 캡슐">나의 캡슐</button>
-      <button class="menu-main" data-proto="우리의 캡슐">우리의 캡슐</button>
-      <button class="menu-main" data-proto="개봉 예정">개봉 예정</button>
-    </div>
-    <div class="simple-note">사진을 원본으로 보관하고, 개봉 시 브라우저 모션을 다시 적용하는 구조로 준비합니다.</div>
-  </div>
-
-
-  <div class="relay-form-view" id="relayFormView">
-    <div class="view-head"><button class="back-btn" id="relayFormBack">←</button><div><div class="view-title">새 릴레이</div><div class="view-sub">30초면 방을 만들 수 있어요</div></div></div>
-    <div class="form-grid">
-      <div class="field"><label>모임 종류</label><select id="relayType"><option>졸업반</option><option>동창회</option><option>동호회</option><option>가족</option><option>직장</option><option>여행모임</option><option>자유모임</option></select></div>
-      <div class="field"><label>릴레이 이름</label><input id="relayTitle" maxlength="60" placeholder="예: 2026년 3학년 2반 졸업 릴레이"></div>
-      <div class="small-row"><div class="field"><label>마감일</label><input id="relayDeadline" type="date"></div><div class="field"><label>참여 방식</label><select id="relayApproval"><option value="approval">방장 승인</option><option value="open">바로 참여</option><option value="password">비밀번호 확인</option></select></div></div>
-      <div class="field"><label>대표 방장</label><input id="relayOwner" maxlength="30" placeholder="이름 또는 별칭"></div>
-      <div class="field"><label>공동방장 (최대 4명, 쉼표로 구분)</label><input id="relayCoAdmins" maxlength="120" placeholder="예: 김총무, 이반장"></div>
-      <div class="field"><label>한 줄 안내</label><textarea id="relayNote" maxlength="160" placeholder="사진 한 장과 한 줄 메시지를 남겨주세요."></textarea></div>
-      <button class="primary-wide" id="createRelayBtn">릴레이 방 만들기</button>
-      <div class="notice"><strong>관리 원칙:</strong> 대표 방장 1명 + 공동방장 복수 지정. 장기 타임캡슐에서도 특정 한 사람에게만 의존하지 않는 구조로 이어집니다.</div>
-    </div>
-  </div>
-
-  <div class="relay-list-view" id="relayListView">
-    <div class="view-head"><button class="back-btn" id="relayListBack">←</button><div><div class="view-title" id="relayListTitle">참여 중</div><div class="view-sub">내가 만든 릴레이</div></div></div>
-    <div id="relayList"></div>
-  </div>
-
-  <div class="join-view" id="joinView">
-    <div class="view-head"><button class="back-btn" id="joinBack">←</button><div><div class="view-title">릴레이 참여</div><div class="view-sub">앱 설치 없이 바로 참여</div></div></div>
-    <div class="mode-badge" id="joinType">모임</div>
-    <div class="join-title" id="joinTitle">릴레이</div>
-    <div class="join-sub" id="joinDeadline"></div>
-    <div class="form-grid">
-      <div class="field"><label>이름 또는 별명</label><input id="joinName" maxlength="30" placeholder="표시할 이름"></div>
-      <div class="field"><label>사진 1장</label><input id="joinPhoto" type="file" accept="image/*"></div>
-      <div class="field"><label>한 줄 메시지</label><textarea id="joinMessage" maxlength="120" placeholder="친구들에게 남길 한마디"></textarea></div>
-      <div class="field"><label>미래의 나에게 (선택)</label><textarea id="joinFuture" maxlength="160" placeholder="나중에 캡슐을 열 때 볼 한마디"></textarea></div>
-      <button class="primary-wide" id="submitJoinBtn">릴레이에 참여하기</button>
-      <div class="notice">사진과 메시지는 Supabase에 저장되고, 방장 화면에는 <strong>실시간으로 참여자가 나타납니다.</strong></div>
-    </div>
-  </div>
-
-
-  <div class="relay-admin-view" id="relayAdminView">
-    <div class="view-head"><button class="back-btn" id="relayAdminBack">←</button><div style="flex:1"><div class="view-title" id="relayAdminTitle">릴레이 참여자</div><div class="view-sub" id="relayAdminSub">제출이 들어오면 자동으로 갱신됩니다</div></div><span class="live-pill"><span class="live-dot"></span>LIVE</span></div>
-    <div class="connection-note" id="relayLiveState">Supabase 연결 확인 중…</div>
-    <div id="relayEntries"></div>
-  </div>
-
-  <div class="home-footer" id="homeFooter"><span class="date-pill" id="datePill">—</span><span>RELAY 1 · 정보</span></div>
-
-  <div class="panel" id="panel">
-    <div class="panel-head">
-      <div class="title-row">
-        <div class="title">졸업사진 만들기</div>
-        <label class="face-label" for="faceInput">👤 얼굴</label>
-        <button class="head-btn" id="closeBtn">×</button>
-      </div>
-      <div class="sub">학령을 고르고, 오늘의 졸업 · 꿈꾸는 나 · 그 시절 중 하나를 선택하세요</div>
-    </div>
-
-    <div class="status" id="status">얼굴 등록 → 학령 선택 → 카드 선택</div>
-
-    <div class="controls">
-      <div class="stage-row">
-        <span>학령</span>
-        <select id="stageSelect">
-          <option value="kindergarten">유치원 · 어린이집</option>
-          <option value="elementary">초등학교</option>
-          <option value="middle">중학교</option>
-          <option value="high" selected>고등학교</option>
-          <option value="university">대학교 · 대학원</option>
-        </select>
-      </div>
-      <div class="tabs">
-        <button class="tab active" data-tab="today">오늘의 졸업</button>
-        <button class="tab" id="dreamTab" data-tab="dream">꿈꾸는 나</button>
-        <button class="tab" data-tab="memory">그 시절</button>
-      </div>
-    </div>
-
-    <div class="cards" id="cards"></div>
-  </div>
-
-  <div class="bottom-actions">
-    <button class="action secondary" id="regenBtn" disabled>↻ 다시 만들기</button>
-    <button class="action" id="saveBtn" disabled>↓ 저장</button>
-  </div>
-  <div class="footer" style="display:none">
-    <span id="footerStatus">V24</span>
-    <span id="footerCount">1 · ○</span>
-  </div>
-
-  <div class="overlay" id="loading">
-    <div class="loader-box">
-      <div class="loader-title" id="loadingTitle">졸업사진 생성 중</div>
-      <div class="loader-sub">빠른 모드로 생성 중입니다. 같은 얼굴·같은 스타일은 다음부터 즉시 불러옵니다.</div>
-      <div class="loader-time" id="loadingTime">0초</div>
-    </div>
-  </div>
-
-  <input id="faceInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-</div>
-
-<script>
-(() => {
-  const STAGE_CARDS = {
-    kindergarten: {
-      today:[
-        {key:'kg_today_gown',name:'학사복 + 꽃다발',desc:'학사모·꽃다발·졸업장·포토존'},
-        {key:'kg_today_hanbok',name:'한복 졸업',desc:'한복·꽃다발·밝은 졸업 포토존'},
-        {key:'kg_today_uniform',name:'원복 졸업',desc:'원복·졸업장·학교 포토존'}
-      ],
-      dream:[
-        {key:'dream_doctor',name:'의사',desc:'하얀 가운과 청진기'},
-        {key:'dream_firefighter',name:'소방관',desc:'안전한 소방관 체험복'},
-        {key:'dream_police',name:'경찰관',desc:'친근한 경찰관 의상'},
-        {key:'dream_astronaut',name:'우주비행사',desc:'우주복과 우주 체험 배경'},
-        {key:'dream_chef',name:'요리사',desc:'셰프복과 요리사 모자'},
-        {key:'dream_teacher',name:'선생님',desc:'책과 교실 분위기'}
-      ],
-      memory:[
-        {key:'kg_memory_uniform',name:'옛 원복',desc:'옛 유치원 원복과 작은 가방'},
-        {key:'kg_memory_studio',name:'옛 사진관 졸업',desc:'오래된 앨범 같은 졸업사진'}
-      ]
-    },
-
-    elementary: {
-      today:[
-        {key:'elem_today_gown',name:'학사복 + 꽃다발',desc:'학사모·꽃다발·졸업장·포토존'},
-        {key:'elem_today_formal',name:'단정한 졸업복',desc:'깔끔한 졸업식 복장·꽃다발'},
-        {key:'elem_today_hanbok',name:'한복 졸업',desc:'한복·꽃다발·졸업 포토존'}
-      ],
-      dream:[
-        {key:'dream_doctor',name:'의사',desc:'의사가 된 미래의 나'},
-        {key:'dream_firefighter',name:'소방관',desc:'소방관이 된 미래의 나'},
-        {key:'dream_police',name:'경찰관',desc:'경찰관이 된 미래의 나'},
-        {key:'dream_astronaut',name:'우주비행사',desc:'우주를 향한 미래의 나'},
-        {key:'dream_scientist',name:'과학자·로봇',desc:'과학·로봇 연구원의 모습'},
-        {key:'dream_pilot',name:'조종사',desc:'비행기를 조종하는 미래'}
-      ],
-      memory:[
-        {key:'elem_memory_bag',name:'옛 책가방 학생',desc:'옛 학생복장과 각진 책가방'},
-        {key:'elem_memory_pe',name:'옛 체육복',desc:'복고 운동장 분위기'},
-        {key:'elem_memory_album',name:'복고 졸업',desc:'오래된 졸업앨범 감성'}
-      ]
-    },
-
-    middle: {
-      today:[
-        {key:'middle_today_uniform',name:'교복 + 꽃다발',desc:'현재 교복·꽃다발·졸업장'},
-        {key:'middle_today_knit',name:'니트베스트 교복',desc:'니트베스트·꽃다발·교실'},
-        {key:'middle_today_gown',name:'학사복 졸업',desc:'학사모·꽃다발·학교 포토존'}
-      ],
-      dream:[],
-      memory:[
-        {key:'middle_memory_black',name:'검정 학생복',desc:'옛 학생복과 각진 책가방'},
-        {key:'middle_memory_cap',name:'학생모 교복',desc:'학생모·옛 책가방·학교 풍경'},
-        {key:'middle_memory_pe',name:'옛 체육복',desc:'복고 체육복과 운동장'}
-      ]
-    },
-
-    high: {
-      today:[
-        {key:'high_today_uniform',name:'현재 교복 + 꽃다발',desc:'교복·꽃다발·졸업장·포토존'},
-        {key:'high_today_knit',name:'니트베스트 교복',desc:'요즘식 레이어드 교복·꽃다발'},
-        {key:'high_today_daily',name:'생활복 졸업',desc:'편한 교복·졸업장·학교 배경'},
-        {key:'high_today_formal',name:'정장 졸업',desc:'단정한 정장·꽃다발·졸업장'}
-      ],
-      dream:[],
-      memory:[
-        {key:'high_memory_drill',name:'점박이 교련복',desc:'흰바탕 검정 얼룩 · 학생모 · 회색 책가방'},
-        {key:'high_memory_black',name:'검정 학생복 + 책가방',desc:'검정 학생복 · 회색계열 옛 각진 책가방'},
-        {key:'high_memory_cap',name:'학생모 교복 + 책가방',desc:'中·高 학생모 · 검정교복 · 옛 책가방'},
-        {key:'high_memory_girl_uniform',name:'여학생 교복 + 책가방',desc:'단정한 여학생 교복 · 옛 하드형 책가방'},
-        {key:'high_memory_girl_cap',name:'여학생 학생모 + 책가방',desc:'여학생 교복 · 中·高 학생모 · 옛 책가방'},
-        {key:'high_memory_pe',name:'옛 체육복',desc:'70~80년대 운동장 · 복고 체육복'},
-        {key:'high_memory_album',name:'복고 졸업',desc:'옛 졸업앨범 · 교실·사진관 감성'}
-      ]
-    },
-
-    university: {
-      today:[
-        {key:'uni_today_gown',name:'학위가운 + 학사모',desc:'학위가운·학위증·꽃다발·캠퍼스'},
-        {key:'uni_today_modern',name:'현대 학위가운',desc:'세련된 학위가운·꽃다발'},
-        {key:'uni_today_hanbok',name:'한복 졸업',desc:'한복·꽃다발·캠퍼스'},
-        {key:'uni_today_formal',name:'정장 졸업',desc:'정장·학위증·꽃다발·캠퍼스'}
-      ],
-      dream:[],
-      memory:[
-        {key:'uni_memory_gown',name:'옛 학위사진',desc:'옛 졸업앨범 같은 학위사진'},
-        {key:'uni_memory_campus',name:'복고 캠퍼스',desc:'옛 캠퍼스·책·가방 분위기'}
-      ]
-    }
-  };
-
-  const state = {
-    face:null, faceName:'face.jpg', stage:'high', tab:'today',
-    lastKey:'', lastBlob:null, lastLabel:'', busy:false, timer:null, startedAt:0
-  };
-
-  const $ = id => document.getElementById(id);
-
-  let sb=null, sbReady=null, realtimeChannel=null, activeAdminRelay=null;
-  async function initSupabase(){
-    if(sb) return sb;
-    if(sbReady) return sbReady;
-    sbReady=(async()=>{
-      try{
-        const r=await fetch('/api/supabase-config',{cache:'no-store'});
-        const c=await r.json();
-        if(!r.ok||!c.url||!c.key) throw new Error(c.error||'Supabase 설정이 없습니다.');
-        if(!window.supabase?.createClient) throw new Error('Supabase 라이브러리를 불러오지 못했습니다.');
-        sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false}});
-        return sb;
-      }catch(e){ sbReady=null; throw e; }
-    })();
-    return sbReady;
-  }
-  async function requireSupabase(){
-    try{return await initSupabase()}catch(e){
-      alert('Supabase 연결이 필요합니다.\n\nVercel 환경변수 SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY와 SQL 설정을 확인하세요.');
-      throw e;
-    }
-  }
-
-  function setStatus(text, cls=''){
-    const el = $('status');
-    el.className = 'status' + (cls ? ' ' + cls : '');
-    el.textContent = text;
-    $('footerStatus').textContent = text || 'V24';
-  }
-
-  function hideViews(){
-    document.querySelectorAll('.home-view,.simple-view,.relay-form-view,.relay-list-view,.join-view,.relay-admin-view').forEach(v=>v.classList.remove('show'));
-  }
-  function showView(id){
-    hideViews();
-    $(id)?.classList.add('show');
-    $('homeFooter').style.display = id==='homeView' ? 'flex' : 'none';
-    $('resultBackBtn')?.classList.remove('show');
-  }
-  function openPanel(){ hideViews(); $('homeFooter').style.display='none'; $('resultBackBtn')?.classList.remove('show'); $('panel').classList.add('show'); }
-  function closePanel(){ $('panel').classList.remove('show'); showView('myTimeView'); }
-  function showResultView(){
-    hideViews();
-    $('panel').classList.remove('show');
-    $('loading').classList.remove('show');
-    $('homeFooter').style.display='none';
-    $('resultBackBtn')?.classList.add('show');
-    try{ history.pushState({timeRelay:'result'}, '', location.href); }catch(_){}
-  }
-
-  function returnFromResult(){
-    $('resultBackBtn')?.classList.remove('show');
-    $('loading').classList.remove('show');
-    openPanel();
-    renderCards();
-    setStatus(state.face ? `✓ ${state.lastLabel || '사진'} · 다른 카드를 선택하거나 다시 만들 수 있어요` : '얼굴 등록 → 학령 선택 → 카드 선택', state.face ? 'ok' : '');
-  }
-
-  function updateModeTabs(){
-    const dreamTab = $('dreamTab');
-    const dreamAllowed = state.stage==='kindergarten' || state.stage==='elementary';
-    if(dreamTab){
-      dreamTab.hidden = !dreamAllowed;
-      dreamTab.disabled = !dreamAllowed;
-    }
-    if(!dreamAllowed && state.tab==='dream'){
-      state.tab='today';
-    }
-    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tab));
-  }
-
-  function renderCards(){
-    updateModeTabs();
-    const data = STAGE_CARDS[state.stage]?.[state.tab] || [];
-    $('cards').innerHTML = data.map((item,i)=>`
-      <button class="card ${state.lastKey===item.key ? 'selected' : ''}" data-key="${item.key}" data-name="${item.name}">
-        <div class="num">${String(i+1).padStart(2,'0')}</div>
-        <div>
-          <div class="card-name">${item.name}</div>
-          <div class="card-desc">${item.desc}</div>
-        </div>
+  <!-- 1. 최상단 상태 정보 헤더 바 (구간명 클릭 시 바로 조정창 이동 / 우측 상단 샷버튼 삭제 완료) -->
+  <header class="fixed top-3 left-3 right-3 z-30 flex items-start justify-between gap-2 pointer-events-none">
+    <div class="flex flex-col gap-1.5 pointer-events-auto">
+      <button id="btn-header-sec-trigger" class="glass-panel flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-500/40 hover:bg-emerald-600/30 active:scale-95 transition-all cursor-pointer shadow-lg group">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="header-sec-name" class="text-xs sm:text-sm font-bold text-emerald-300 group-hover:text-white">현재구간: ① ⚓ 대명항 어항구간</span>
+        <span class="text-[10px] text-emerald-400/80 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/30">설정 ⚙️</span>
       </button>
-    `).join('');
-    [...$('cards').querySelectorAll('.card')].forEach(btn=>{
-      btn.addEventListener('click',()=>generate(btn.dataset.key, btn.dataset.name));
-    });
-  }
 
-  function showLoading(show, label='졸업사진'){
-    $('loadingTitle').textContent = `${label} 생성 중`;
-    $('loading').classList.toggle('show', show);
-    if(show){
-      state.startedAt = Date.now();
-      clearInterval(state.timer);
-      const tick = ()=>{
-        $('loadingTime').textContent = `${Math.floor((Date.now()-state.startedAt)/1000)}초`;
-      };
-      tick();
-      state.timer = setInterval(tick, 1000);
-    }else{
-      clearInterval(state.timer);
-      state.timer = null;
-    }
-  }
+      <div class="glass-panel px-3.5 py-2 rounded-xl border border-white/10 text-[11px] sm:text-xs text-slate-300 flex flex-col gap-0.5 shadow-xl">
+        <div class="flex items-center gap-2">
+          <span>주행거리 <strong id="hud-dist" class="text-white">0 m</strong> / <span class="text-slate-400">5,000 m</span></span>
+          <span class="text-slate-500">|</span>
+          <span>시작 후 경과 <strong id="hud-timer" class="text-emerald-300">00:00</strong></span>
+          <span class="text-slate-500">|</span>
+          <span>속도 <strong id="hud-speed" class="text-amber-300">35 km/h</strong></span>
+        </div>
+        <div class="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+          <span>🚐 승합차 탑승 시점 · 도로 양측 자전거도로 & 이중 가드레일</span>
+        </div>
+      </div>
+    </div>
+  </header>
 
-  async function openDb(){
-    return await new Promise((resolve,reject)=>{
-      const req = indexedDB.open('time-relay-v23-6',2);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if(!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
-        if(!db.objectStoreNames.contains('generated')) db.createObjectStore('generated');
-      };
-      req.onsuccess = ()=>resolve(req.result);
-      req.onerror = ()=>reject(req.error);
-    });
-  }
-  async function idbPut(db,store,key,val){ return await new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); tx.objectStore(store).put(val,key); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error);});}
-  async function idbGet(db,store,key){ return await new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const r=tx.objectStore(store).get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);});}
+  <!-- 하단 좌측 안내 문구 -->
+  <div class="fixed bottom-16 left-3 z-20 pointer-events-none hidden sm:block">
+    <div class="glass-panel px-3 py-1.5 rounded-lg text-[10px] text-slate-400 border border-white/5">
+      좌측: 염하강 해협 & 수변 황토 자전거길 (이중 가드레일)<br>
+      우측: 내륙 황토 자전거길 (이중 가드레일) & 김포 솔숲
+    </div>
+  </div>
 
+  <!-- 토스트 알림창 -->
+  <div id="toast-popup" class="fixed top-24 left-1/2 -translate-x-1/2 z-40 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-2">
+    <div class="glass-panel px-4 py-2 rounded-xl border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-2xl">
+      <span id="toast-icon">💾</span>
+      <span id="toast-text">설정이 저장되었습니다.</span>
+    </div>
+  </div>
 
-  async function sha256Blob(blob){
-    const buf = await blob.arrayBuffer();
-    const hash = await crypto.subtle.digest('SHA-256', buf);
-    return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
+  <!-- 2. 하단 조작 바 -->
+  <div class="fixed bottom-4 left-3 right-3 z-30 flex flex-col gap-2 pointer-events-none max-w-md mx-auto">
+    <div class="glass-panel pointer-events-auto p-1.5 rounded-2xl flex items-center justify-between gap-1 border border-white/10 shadow-2xl">
+      <button id="btn-pause" class="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-xs font-bold text-slate-300 flex items-center gap-1">
+        ⏸️ <span class="hidden sm:inline">일시정지</span>
+      </button>
+      <div class="flex items-center gap-1">
+        <button id="btn-view-drone1" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">🚁 1인칭 드론</button>
+        <button id="btn-view-driver" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">🚘 운전자</button>
+        <button id="btn-view-van" class="px-2.5 py-1.5 rounded-xl text-xs font-black bg-emerald-500 text-slate-950">🚐 승합차</button>
+      </div>
+    </div>
+  </div>
 
-  async function compressFace(file){
-    const url = URL.createObjectURL(file);
-    try{
-      const img = await new Promise((resolve,reject)=>{
-        const el = new Image();
-        el.onload=()=>resolve(el); el.onerror=reject; el.src=url;
-      });
-      const maxSide = 1024;
-      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-      const w = Math.max(1, Math.round(img.naturalWidth * scale));
-      const h = Math.max(1, Math.round(img.naturalHeight * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width=w; canvas.height=h;
-      const ctx=canvas.getContext('2d',{alpha:false});
-      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
-      ctx.drawImage(img,0,0,w,h);
-      return await new Promise((resolve,reject)=>{
-        canvas.toBlob(b=>b?resolve(b):reject(new Error('얼굴 이미지 압축 실패')),'image/jpeg',0.86);
-      });
-    }finally{ URL.revokeObjectURL(url); }
-  }
+  <!-- 3. 구간별 조절 드로어 -->
+  <aside id="adjust-drawer" class="control-drawer fixed bottom-0 left-0 right-0 z-50 glass-panel rounded-t-3xl p-5 border-t border-emerald-500/30 transform translate-y-full max-h-[82vh] overflow-y-auto max-w-xl mx-auto shadow-2xl">
+    <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+      <div class="flex items-center gap-2">
+        <span class="text-base font-bold text-emerald-400">⚙️ 구간 상세 설계 조정</span>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">최대속도 50km/h 제한</span>
+      </div>
+      <button id="btn-drawer-close" class="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800">
+        ✕
+      </button>
+    </div>
 
-  async function blobToBase64(blob){
-    const buf = await blob.arrayBuffer();
-    const bytes = new Uint8Array(buf);
-    let binary='';
-    const chunk=0x8000;
-    for(let i=0;i<bytes.length;i+=chunk){
-      binary += String.fromCharCode(...bytes.subarray(i,i+chunk));
-    }
-    return btoa(binary);
-  }
+    <div class="grid grid-cols-5 gap-1 mb-4 bg-slate-900/60 p-1 rounded-xl">
+      <button data-sec="0" class="sec-tab-btn py-1.5 text-[11px] font-bold rounded-lg bg-emerald-500 text-slate-950">① 대명항</button>
+      <button data-sec="1" class="sec-tab-btn py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:bg-slate-800">② 덕포진</button>
+      <button data-sec="2" class="sec-tab-btn py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:bg-slate-800">③ 피난처</button>
+      <button data-sec="3" class="sec-tab-btn py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:bg-slate-800">④ 노을쉼터</button>
+      <button data-sec="4" class="sec-tab-btn py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:bg-slate-800">⑤ 문수산성</button>
+    </div>
 
-  async function cacheKeyFor(key){
-    const faceHash = state.face ? await sha256Blob(state.face) : 'no-face';
-    return `v23.6:${faceHash}:${state.stage}:${key}`;
-  }
+    <div class="space-y-4 text-xs">
+      <div class="bg-slate-900/40 p-3 rounded-xl border border-white/5">
+        <div class="flex justify-between items-center mb-1.5">
+          <span class="font-semibold text-slate-300">📐 고저차 (낙타등 높낮이)</span>
+          <span id="drawer-amp-val" class="font-bold text-emerald-400 text-sm">1.1m</span>
+        </div>
+        <input id="slider-amp" type="range" min="0.2" max="3.5" step="0.1" value="1.1" class="w-full slider-accent h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+      </div>
 
-  async function saveFace(file){
-    const compact = await compressFace(file);
-    state.face = compact;
-    state.faceName = 'face.jpg';
-    try{
-      const db = await openDb();
-      await idbPut(db,'kv','face',compact);
-    }catch(_){}
-    setStatus('✓ 얼굴 준비됨 · 카드를 선택하세요','ok');
-  }
+      <div class="bg-slate-900/40 p-3 rounded-xl border border-white/5">
+        <div class="flex justify-between items-center mb-1.5">
+          <span class="font-semibold text-slate-300">〰️ 파장 길이 (최소 50m ~ 최대 350m)</span>
+          <span id="drawer-wl-val" class="font-bold text-emerald-400 text-sm">260m</span>
+        </div>
+        <input id="slider-wl" type="range" min="50" max="350" step="5" value="260" class="w-full slider-accent h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+      </div>
 
-  async function restoreFace(){
-    try{
-      const db = await openDb();
-      const f = await idbGet(db,'kv','face');
-      if(f){ state.face = f; setStatus('✓ 얼굴 준비됨 · 카드를 선택하세요','ok'); }
-    }catch(_){}
-  }
+      <div class="bg-slate-900/40 p-3 rounded-xl border border-white/5">
+        <div class="flex justify-between items-center mb-1.5">
+          <span class="font-semibold text-slate-300">⚡ 권장 주행속도 (최대 50)</span>
+          <span id="drawer-speed-val" class="font-bold text-amber-400 text-sm">35 km/h</span>
+        </div>
+        <input id="slider-speed" type="range" min="15" max="50" step="1" value="35" class="w-full slider-accent h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+      </div>
 
-  function blobToDataURL(blob){
-    return new Promise((resolve,reject)=>{
-      const r = new FileReader();
-      r.onload = ()=>resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(blob);
-    });
-  }
+      <button id="btn-save-section" class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm tracking-wide shadow-lg shadow-emerald-500/20 active:scale-98 transition-all flex items-center justify-center gap-2">
+        💾 이 구간 설정 저장 후 닫기
+      </button>
 
-  async function setResult(blob){
-    state.lastBlob = blob;
-    const url = await blobToDataURL(blob);
-    $('resultBg').style.backgroundImage = `url(${url})`;
-    $('saveBtn').disabled = false;
-    $('regenBtn').disabled = !state.lastKey;
-  }
+      <div class="flex justify-between pt-1 text-[11px] text-slate-400">
+        <button id="btn-reset-defaults" class="hover:text-rose-400 underline">기본값 복원</button>
+      </div>
+    </div>
+  </aside>
 
-  async function generate(key, label, force=false){
-    if(state.busy) return;
-    if(!state.face){
-      setStatus('얼굴을 먼저 등록하세요','err');
-      return;
-    }
-    state.busy = true;
-    setStatus('생성 중...', 'busy');
-    showLoading(true, label);
-    try{
-      const ckey = await cacheKeyFor(key);
-      if(!force){
-        try{
-          const db=await openDb();
-          const cached=await idbGet(db,'generated',ckey);
-          if(cached){
-            state.lastKey=key; state.lastLabel=label;
-            await setResult(cached);
-            renderCards(); showResultView();
-            setStatus(`✓ ${label} 즉시 불러옴`,'ok');
-            return;
-          }
-        }catch(_){}
+  <!-- 4. Three.js 3D 엔진 -->
+  <script>
+    (function initSimulation() {
+      if (typeof THREE === 'undefined') {
+        setTimeout(initSimulation, 40);
+        return;
       }
 
-      const imageBase64 = await blobToBase64(state.face);
-      const res = await fetch('/api/generate-graduation', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          imageBase64,
-          mime:'image/jpeg',
-          stage:state.stage,
-          lookKey:key
+      try {
+        localStorage.removeItem('gimpo_road_sections');
+      } catch(e) {}
+
+      const TOTAL_ROAD_LENGTH = 5000;
+      const NUM_SEGMENTS = 2000;
+      const step = TOTAL_ROAD_LENGTH / NUM_SEGMENTS;
+
+      const defaultSections = [
+        { name: "① ⚓ 대명항 어항구간", start: 0, end: 900, amp: 1.1, wl: 260, speed: 35 },
+        { name: "② 🌊 덕포진 역사구간", start: 900, end: 1700, amp: 1.5, wl: 280, speed: 35 },
+        { name: "③ 🆘 염하강 평화피난처 구간", start: 1700, end: 2500, amp: 1.0, wl: 260, speed: 35 },
+        { name: "④ ☕ 노을 복합쉼터 구간", start: 2500, end: 3500, amp: 0.8, wl: 280, speed: 30 },
+        { name: "⑤ 🌲 문수산성 가로수길 구간", start: 3500, end: 5000, amp: 1.3, wl: 260, speed: 40 }
+      ];
+
+      let sectionData = defaultSections;
+
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x38bdf8);
+      scene.fog = null;
+
+      const camera = new THREE.PerspectiveCamera(54, window.innerWidth / window.innerHeight, 0.5, 6000);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfffbeb, 1.25);
+      dirLight.position.set(-300, 600, 300);
+      scene.add(dirLight);
+
+      // 도로 중심선 계산
+      const R_MAJOR = 620;
+      const R_MINOR = 380;
+
+      function getSectionAtDistance(dist) {
+        const d = ((dist % TOTAL_ROAD_LENGTH) + TOTAL_ROAD_LENGTH) % TOTAL_ROAD_LENGTH;
+        for (let i = 0; i < sectionData.length; i++) {
+          if (d >= sectionData[i].start && d < sectionData[i].end) return { sec: sectionData[i], idx: i };
+        }
+        return { sec: sectionData[0], idx: 0 };
+      }
+
+      // 구간 변경 지점에서도 고저차가 끊기지 않도록 부드럽게 보간한다.
+      function smoothstep(t) {
+        t = Math.max(0, Math.min(1, t));
+        return t * t * (3 - 2 * t);
+      }
+      function getSmoothSectionValue(dist, key) {
+        const d = ((dist % TOTAL_ROAD_LENGTH) + TOTAL_ROAD_LENGTH) % TOTAL_ROAD_LENGTH;
+        const { sec, idx } = getSectionAtDistance(d);
+        const blendHalf = 65;
+        const prev = sectionData[(idx - 1 + sectionData.length) % sectionData.length];
+        const next = sectionData[(idx + 1) % sectionData.length];
+        if (d - sec.start < blendHalf) {
+          const t = smoothstep((d - sec.start + blendHalf) / (2 * blendHalf));
+          return prev[key] * (1 - t) + sec[key] * t;
+        }
+        if (sec.end - d < blendHalf) {
+          const t = smoothstep((sec.end - d + blendHalf) / (2 * blendHalf));
+          return next[key] * (1 - t) + sec[key] * t;
+        }
+        return sec[key];
+      }
+      // 파장을 실제 주기로 반영하면서 시작점 이음새를 맞추는 위상표.
+      const PHASE_SAMPLES = 1000;
+      let roadPhaseTable = new Float64Array(PHASE_SAMPLES + 1);
+      function rebuildRoadPhase() {
+        roadPhaseTable[0] = 0;
+        for (let i = 1; i <= PHASE_SAMPLES; i++) {
+          const d = (i - 0.5) * TOTAL_ROAD_LENGTH / PHASE_SAMPLES;
+          const wl = Math.max(50, getSmoothSectionValue(d, 'wl'));
+          roadPhaseTable[i] = roadPhaseTable[i - 1] + (TOTAL_ROAD_LENGTH / PHASE_SAMPLES) / wl;
+        }
+        const cycles = Math.max(1, Math.round(roadPhaseTable[PHASE_SAMPLES]));
+        const scale = (Math.PI * 2 * cycles) / roadPhaseTable[PHASE_SAMPLES];
+        for (let i = 0; i <= PHASE_SAMPLES; i++) roadPhaseTable[i] *= scale;
+      }
+      function getRoadPhase(d) {
+        const pos = d / TOTAL_ROAD_LENGTH * PHASE_SAMPLES;
+        const i = Math.min(PHASE_SAMPLES - 1, Math.floor(pos));
+        const t = pos - i;
+        return roadPhaseTable[i] * (1 - t) + roadPhaseTable[i + 1] * t;
+      }
+      rebuildRoadPhase();
+
+      function getRoadCenterPoint(dist) {
+        const d = ((dist % TOTAL_ROAD_LENGTH) + TOTAL_ROAD_LENGTH) % TOTAL_ROAD_LENGTH;
+        const theta = (d / TOTAL_ROAD_LENGTH) * Math.PI * 2;
+        const x = Math.sin(theta) * R_MAJOR;
+        const z = -Math.cos(theta) * R_MINOR;
+        const amp = Math.min(2.0, Math.max(0.2, getSmoothSectionValue(d, 'amp')));
+        // 구간별 파장을 반영한 연속 파형. 위상표를 한 바퀴 정수 주기로 보정.
+        const phase = getRoadPhase(d);
+        const wave = Math.sin(phase);
+        const y = 6.2 + amp * wave;
+        return new THREE.Vector3(x, y, z);
+      }
+
+      function getRoadTangent(dist) {
+        const p1 = getRoadCenterPoint(dist - 2.0);
+        const p2 = getRoadCenterPoint(dist + 2.0);
+        return p2.clone().sub(p1).normalize();
+      }
+
+      function getRoadLeftVector(dist) {
+        const tangent = getRoadTangent(dist);
+        const up = new THREE.Vector3(0, 1, 0);
+        return new THREE.Vector3().crossVectors(up, tangent).normalize(); // 좌측 수변
+      }
+
+      function getRoadRightVector(dist) {
+        return getRoadLeftVector(dist).clone().negate(); // 우측 내륙
+      }
+
+      function createStripGeometry(segments) {
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array((segments + 1) * 2 * 3);
+        const indices = [];
+
+        for (let i = 0; i < segments; i++) {
+          const a = i * 2;
+          const b = i * 2 + 1;
+          const c = (i + 1) * 2;
+          const d = (i + 1) * 2 + 1;
+          indices.push(a, b, c);
+          indices.push(b, d, c);
+        }
+
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setIndex(indices);
+        return geo;
+      }
+
+      // 1. 차도 아스팔트 상판 (폭 7.3m)
+      const roadGeo = createStripGeometry(NUM_SEGMENTS);
+      const roadMesh = new THREE.Mesh(
+        roadGeo,
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85, metalness: 0.15, side: THREE.DoubleSide })
+      );
+      scene.add(roadMesh);
+
+      // 2. 황색 복선 중앙선
+      const centerLineGeo = createStripGeometry(NUM_SEGMENTS);
+      const centerLineMesh = new THREE.Mesh(
+        centerLineGeo,
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24, side: THREE.DoubleSide })
+      );
+      scene.add(centerLineMesh);
+
+      // 3. ★ 좌측 수변 황토색 자전거 전용도로 (폭 1.75m)
+      const bikeLeftGeo = createStripGeometry(NUM_SEGMENTS);
+      const bikeLeftMesh = new THREE.Mesh(
+        bikeLeftGeo,
+        new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.85, side: THREE.DoubleSide })
+      );
+      scene.add(bikeLeftMesh);
+
+      // 4. 좌측 자전거도로 구분선 (백색)
+      const bikeLeftLineGeo = createStripGeometry(NUM_SEGMENTS);
+      const bikeLeftLineMesh = new THREE.Mesh(
+        bikeLeftLineGeo,
+        new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+      );
+      scene.add(bikeLeftLineMesh);
+
+      // 5. ★ 우측 내륙 황토색 자전거 전용도로 (폭 1.75m)
+      const bikeRightGeo = createStripGeometry(NUM_SEGMENTS);
+      const bikeRightMesh = new THREE.Mesh(
+        bikeRightGeo,
+        new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.85, side: THREE.DoubleSide })
+      );
+      scene.add(bikeRightMesh);
+
+      // 6. 우측 자전거도로 구분선 (백색)
+      const bikeRightLineGeo = createStripGeometry(NUM_SEGMENTS);
+      const bikeRightLineMesh = new THREE.Mesh(
+        bikeRightLineGeo,
+        new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+      );
+      scene.add(bikeRightLineMesh);
+
+      // 7. 좌측 깊고 차분한 실제 염하강 에메랄드 네이비 블루 수면
+      const seaGeo = createStripGeometry(NUM_SEGMENTS);
+      const seaMesh = new THREE.Mesh(
+        seaGeo,
+        new THREE.MeshLambertMaterial({
+          color: 0x14556d, // 염하강: 차분한 짙은 청록-남청색
+          emissive: 0x061c29,
+          side: THREE.DoubleSide
         })
-      });
-      const data = await res.json().catch(()=>({}));
-      if(!res.ok) throw new Error(data.error || `생성 실패 (${res.status})`);
-      const bin = atob(data.imageBase64);
-      const arr = new Uint8Array(bin.length);
-      for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-      const blob = new Blob([arr], {type:data.mime || 'image/jpeg'});
-      state.lastKey=key; state.lastLabel=label;
-      await setResult(blob);
-      try{ const db=await openDb(); await idbPut(db,'generated',ckey,blob); }catch(_){}
-      renderCards(); showResultView();
-      const sec=Math.max(1,Math.round((data.elapsedMs||0)/1000));
-      setStatus(`✓ ${label} 완성 · ${sec}초`,'ok');
-    }catch(err){
-      console.error(err);
-      setStatus(err.message || '오류가 발생했습니다','err');
-      alert((err.message||'오류가 발생했습니다')+'\n\n이미지 공급자 설정과 API 크레딧을 확인하세요.');
-    }finally{
-      state.busy=false;
-      showLoading(false);
-    }
-  }
+      );
+      scene.add(seaMesh);
 
-  async function saveCurrent(){
-    if(!state.lastBlob){ setStatus('저장할 사진이 없습니다','err'); return; }
-    const url = URL.createObjectURL(state.lastBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `time-relay-${state.stage}-${state.lastKey || 'graduation'}.jpg`;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 3000);
-    setStatus('✓ 저장 완료','ok');
-  }
+      // 8. 우측 김포 내륙 지형 (도로 갓길과 일체화되어 시야 차단 박멸)
+      const landGeo = createStripGeometry(NUM_SEGMENTS);
+      const landMesh = new THREE.Mesh(
+        landGeo,
+        new THREE.MeshLambertMaterial({
+          color: 0x34865e, // 자연스러운 녹지
+          emissive: 0x0b2417,
+          side: THREE.DoubleSide
+        })
+      );
+      scene.add(landMesh);
 
+      // -------------------------------------------------------------------------
+      // ★ 도로 양측 4열 이중 가드레일 (실버 그레이)
+      // -------------------------------------------------------------------------
+      // (1) 좌측 외측 가드레일 (자전거도로 바깥 강물 경계)
+      const railLeftOuterGeo = createStripGeometry(NUM_SEGMENTS);
+      const railLeftOuterMesh = new THREE.Mesh(
+        railLeftOuterGeo,
+        new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.25, side: THREE.DoubleSide })
+      );
+      scene.add(railLeftOuterMesh);
 
-  const RELAY_KEY='time-relay-v24-relays';
-  function relayStore(){ try{return JSON.parse(localStorage.getItem(RELAY_KEY)||'[]')}catch(_){return []} }
-  function saveRelayStore(v){ localStorage.setItem(RELAY_KEY, JSON.stringify(v)); }
-  function randId(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<8;i++) s+=a[Math.floor(Math.random()*a.length)]; return s; }
-  function showStandalone(id){ hideViews(); ['relayFormView','relayListView','joinView','relayAdminView'].forEach(x=>$(x)?.classList.remove('show')); $(id).classList.add('show'); $('homeFooter').style.display='none'; }
-  function defaultDeadline(){ const d=new Date(); d.setDate(d.getDate()+14); return d.toISOString().slice(0,10); }
-  function inviteUrl(r){ const u=new URL(location.href); u.search=''; u.hash=''; u.searchParams.set('join',r.id); return u.toString(); }
-  function openNewRelay(){ $('relayDeadline').value=defaultDeadline(); $('relayTitle').value=''; $('relayOwner').value=''; $('relayCoAdmins').value=''; $('relayNote').value='사진 한 장과 한 줄 메시지를 남겨주세요.'; showStandalone('relayFormView'); }
+      // (2) 좌측 내측 가드레일 (차도와 좌측 자전거길 사이 분리)
+      const railLeftInnerGeo = createStripGeometry(NUM_SEGMENTS);
+      const railLeftInnerMesh = new THREE.Mesh(
+        railLeftInnerGeo,
+        new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.25, side: THREE.DoubleSide })
+      );
+      scene.add(railLeftInnerMesh);
 
-  async function createRelay(){
-    const title=$('relayTitle').value.trim(), owner=$('relayOwner').value.trim();
-    if(!title){alert('릴레이 이름을 입력하세요.'); return}
-    if(!owner){alert('대표 방장을 입력하세요.'); return}
-    const client=await requireSupabase();
-    const r={id:randId(),type:$('relayType').value,title,deadline:$('relayDeadline').value||null,approval:$('relayApproval').value,owner,co_admins:$('relayCoAdmins').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,4),note:$('relayNote').value.trim(),status:'active'};
-    $('createRelayBtn').disabled=true; $('createRelayBtn').textContent='방 만드는 중…';
-    try{
-      const {error}=await client.from('relays').insert(r);
-      if(error) throw error;
-      const all=relayStore(); all.unshift({id:r.id}); saveRelayStore(all);
-      alert('릴레이 방을 만들었습니다. 초대 링크를 보내세요.');
-      await showRelayList('active');
-    }catch(e){console.error(e); alert('방 생성 실패: '+(e.message||e));}
-    finally{$('createRelayBtn').disabled=false; $('createRelayBtn').textContent='릴레이 방 만들기';}
-  }
+      // (3) 우측 내측 가드레일 (차도와 우측 자전거길 사이 분리)
+      const railRightInnerGeo = createStripGeometry(NUM_SEGMENTS);
+      const railRightInnerMesh = new THREE.Mesh(
+        railRightInnerGeo,
+        new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.25, side: THREE.DoubleSide })
+      );
+      scene.add(railRightInnerMesh);
 
-  async function copyText(t){ try{await navigator.clipboard.writeText(t); alert('초대 링크를 복사했습니다.')}catch(_){prompt('아래 링크를 복사하세요.',t)} }
+      // (4) 우측 외측 가드레일 (우측 자전거길 바깥 숲 경계)
+      const railRightOuterGeo = createStripGeometry(NUM_SEGMENTS);
+      const railRightOuterMesh = new THREE.Mesh(
+        railRightOuterGeo,
+        new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.25, side: THREE.DoubleSide })
+      );
+      scene.add(railRightOuterMesh);
 
-  async function getMyRelays(){
-    const ids=relayStore().map(x=>x.id).filter(Boolean);
-    if(!ids.length) return [];
-    const client=await requireSupabase();
-    const {data,error}=await client.from('relays').select('*').in('id',ids).order('created_at',{ascending:false});
-    if(error) throw error;
-    return data||[];
-  }
+      const guardrailPostGroup = new THREE.Group();
+      scene.add(guardrailPostGroup);
 
-  async function showRelayList(mode='active'){
-    $('relayListTitle').textContent=mode==='completed'?'완성본':'참여 중';
-    const host=$('relayList'); host.innerHTML='<div class="simple-note">불러오는 중…</div>'; showStandalone('relayListView');
-    try{
-      const all=(await getMyRelays()).filter(r=>mode==='completed'?r.status==='completed':r.status!=='completed');
-      host.innerHTML='';
-      if(!all.length){ host.innerHTML='<div class="simple-note">아직 표시할 릴레이가 없습니다.</div>'; return; }
-      for(const r of all){
-        const client=await requireSupabase();
-        const {count}=await client.from('entries').select('id',{count:'exact',head:true}).eq('relay_id',r.id);
-        const div=document.createElement('div'); div.className='relay-card';
-        const admins=[r.owner,...(r.co_admins||[])].join(' · ');
-        div.innerHTML=`<div class="mode-badge">${esc(r.type)}</div><h3>${esc(r.title)}</h3><div class="relay-meta">방장 ${esc(admins)}<br>마감 ${r.deadline||'미정'} · 참여 ${count||0}명 · 코드 ${r.id}</div><div class="invite-box"><div class="invite-link">${inviteUrl(r)}</div></div><div class="relay-actions"><button class="mini-btn" data-copy>초대 링크 복사</button><button class="mini-btn" data-manage>참여자 LIVE</button><button class="mini-btn" data-open>참여 화면 보기</button><button class="mini-btn" data-complete>${r.status==='completed'?'완성됨':'완성 처리'}</button></div>`;
-        div.querySelector('[data-copy]').onclick=()=>copyText(inviteUrl(r));
-        div.querySelector('[data-manage]').onclick=()=>openRelayAdmin(r);
-        div.querySelector('[data-open]').onclick=()=>openJoin(r);
-        div.querySelector('[data-complete]').onclick=async()=>{
-          if(r.status==='completed') return;
-          if(!confirm('이 릴레이를 완성 처리할까요?')) return;
-          const {error}=await client.from('relays').update({status:'completed',completed_at:new Date().toISOString()}).eq('id',r.id);
-          if(error) alert(error.message); else showRelayList('active');
-        };
-        host.appendChild(div);
+      const treeGroup = new THREE.Group();
+      scene.add(treeGroup);
+
+      function createPineTree(seed = 0) {
+        const g = new THREE.Group();
+        const variant = seed % 3;
+        const crownColors = [0x116a47, 0x178454, 0x267c4b];
+        const trunk = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18, 0.29, 2.5, 8),
+          new THREE.MeshStandardMaterial({ color: 0x62432b, roughness: 0.92 })
+        );
+        trunk.position.y = 1.25;
+        g.add(trunk);
+        if (variant === 2) {
+          const crown = new THREE.Mesh(
+            new THREE.SphereGeometry(1.8, 9, 7),
+            new THREE.MeshStandardMaterial({color: crownColors[variant], roughness: 0.9})
+          );
+          crown.position.y = 3.5;
+          g.add(crown);
+        } else {
+          [0, 1].forEach(level => {
+            const foliage = new THREE.Mesh(
+              new THREE.ConeGeometry(level ? 1.15 : 1.65, level ? 2.35 : 2.8, 9),
+              new THREE.MeshStandardMaterial({ color: crownColors[(variant + level) % crownColors.length], roughness: 0.9 })
+            );
+            foliage.position.y = level ? 4.25 : 3.2;
+            g.add(foliage);
+          });
+        }
+        return g;
       }
-    }catch(e){console.error(e); host.innerHTML=`<div class="simple-note">Supabase 연결 오류<br>${esc(e.message||String(e))}</div>`;}
-  }
 
-  function esc(v=''){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+      // 도로 형상 리빌드
+      function rebuildRoadGeometry() {
+        for (const group of [guardrailPostGroup, treeGroup]) {
+          while (group.children.length > 0) {
+            const child = group.children[0];
+            child.traverse(obj => {
+              if (obj.isMesh) {
+                obj.geometry.dispose();
+                if (Array.isArray(obj.material)) obj.material.forEach(mat => mat.dispose());
+                else obj.material.dispose();
+              }
+            });
+            group.remove(child);
+          }
+        }
 
-  async function fetchRelay(id){
-    const client=await requireSupabase();
-    const {data,error}=await client.from('relays').select('*').eq('id',id).single();
-    if(error) throw error; return data;
-  }
+        const rPos = roadGeo.attributes.position.array;
+        const cPos = centerLineGeo.attributes.position.array;
+        const blPos = bikeLeftGeo.attributes.position.array;
+        const bllPos = bikeLeftLineGeo.attributes.position.array;
+        const brPos = bikeRightGeo.attributes.position.array;
+        const brlPos = bikeRightLineGeo.attributes.position.array;
+        const sPos = seaGeo.attributes.position.array;
+        const lPos = landGeo.attributes.position.array;
 
-  async function openJoin(rOrId){
-    try{
-      const r=typeof rOrId==='string'?await fetchRelay(rOrId):rOrId;
-      state.joinRelay=r; $('joinType').textContent=r.type||'모임'; $('joinTitle').textContent=r.title||'릴레이'; $('joinDeadline').textContent=`마감 ${r.deadline||'미정'} · ${r.note||''}`; $('joinName').value=''; $('joinMessage').value=''; $('joinFuture').value=''; $('joinPhoto').value=''; showStandalone('joinView');
-    }catch(e){alert('릴레이를 찾을 수 없습니다. 링크가 만료되었거나 설정을 확인하세요.'); showView('homeView');}
-  }
+        const rloPos = railLeftOuterGeo.attributes.position.array;
+        const rliPos = railLeftInnerGeo.attributes.position.array;
+        const rriPos = railRightInnerGeo.attributes.position.array;
+        const rroPos = railRightOuterGeo.attributes.position.array;
 
-  async function compressRelayPhoto(file){
-    const bmp=await createImageBitmap(file);
-    const max=1600, scale=Math.min(1,max/Math.max(bmp.width,bmp.height));
-    const c=document.createElement('canvas'); c.width=Math.round(bmp.width*scale); c.height=Math.round(bmp.height*scale);
-    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height); bmp.close?.();
-    return await new Promise(res=>c.toBlob(res,'image/jpeg',0.82));
-  }
+        const postGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.1, 8);
+        const postMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 });
 
-  async function submitJoin(){
-    const r=state.joinRelay, name=$('joinName').value.trim(), msg=$('joinMessage').value.trim();
-    if(!r||!name||!msg){alert('이름과 한 줄 메시지를 입력하세요.'); return}
-    const client=await requireSupabase();
-    const btn=$('submitJoinBtn'); btn.disabled=true; btn.textContent='제출 중…';
-    try{
-      let photoPath=null, photoUrl=null;
-      const f=$('joinPhoto').files?.[0];
-      if(f){
-        const blob=await compressRelayPhoto(f);
-        const fname=`${r.id}/${crypto.randomUUID()}.jpg`;
-        const {error:upErr}=await client.storage.from('relay-photos').upload(fname,blob,{contentType:'image/jpeg',upsert:false});
-        if(upErr) throw upErr;
-        photoPath=fname;
-        photoUrl=client.storage.from('relay-photos').getPublicUrl(fname).data.publicUrl;
+        for (let i = 0; i <= NUM_SEGMENTS; i++) {
+          const d = (i % NUM_SEGMENTS) * step;
+          const pt = getRoadCenterPoint(d);
+          const leftVec = getRoadLeftVector(d);
+          const rightVec = getRoadRightVector(d);
+
+          // 차도 폭 7.3m (좌 3.65m, 우 3.65m)
+          const pL = pt.clone().add(leftVec.clone().multiplyScalar(3.65));
+          const pR = pt.clone().add(rightVec.clone().multiplyScalar(3.65));
+
+          const v0 = (i * 2) * 3;
+          const v1 = (i * 2 + 1) * 3;
+
+          // 1. 차도 아스팔트 상판
+          rPos[v0] = pL.x; rPos[v0 + 1] = pL.y; rPos[v0 + 2] = pL.z;
+          rPos[v1] = pR.x; rPos[v1 + 1] = pR.y; rPos[v1 + 2] = pR.z;
+
+          // 2. 황색 복선 중앙선
+          const cL = pt.clone().add(leftVec.clone().multiplyScalar(0.14));
+          const cR = pt.clone().add(rightVec.clone().multiplyScalar(0.14));
+          cL.y += 0.04; cR.y += 0.04;
+
+          cPos[v0] = cL.x; cPos[v0 + 1] = cL.y; cPos[v0 + 2] = cL.z;
+          cPos[v1] = cR.x; cPos[v1 + 1] = cR.y; cPos[v1 + 2] = cR.z;
+
+          // 3. ★ 좌측 수변 황토색 자전거 전용도로 (pL에서 수변 바깥으로 1.75m)
+          const bL_inner = pL.clone();
+          const bL_outer = pL.clone().add(leftVec.clone().multiplyScalar(1.75));
+          bL_inner.y += 0.02; bL_outer.y += 0.02;
+
+          blPos[v0] = bL_outer.x; blPos[v0 + 1] = bL_outer.y; blPos[v0 + 2] = bL_outer.z;
+          blPos[v1] = bL_inner.x; blPos[v1 + 1] = bL_inner.y; blPos[v1 + 2] = bL_inner.z;
+
+          // 좌측 자전거도로 백색 구분선
+          const bll_L = pL.clone().add(leftVec.clone().multiplyScalar(0.06));
+          const bll_R = pL.clone().add(leftVec.clone().multiplyScalar(0.13));
+          bll_L.y += 0.03; bll_R.y += 0.03;
+
+          bllPos[v0] = bll_L.x; bllPos[v0 + 1] = bll_L.y; bllPos[v0 + 2] = bll_L.z;
+          bllPos[v1] = bll_R.x; bllPos[v1 + 1] = bll_R.y; bllPos[v1 + 2] = bll_R.z;
+
+          // 4. ★ 우측 내륙 황토색 자전거 전용도로 (pR에서 숲 쪽으로 1.75m)
+          const bR_inner = pR.clone();
+          const bR_outer = pR.clone().add(rightVec.clone().multiplyScalar(1.75));
+          bR_inner.y += 0.02; bR_outer.y += 0.02;
+
+          brPos[v0] = bR_inner.x; brPos[v0 + 1] = bR_inner.y; brPos[v0 + 2] = bR_inner.z;
+          brPos[v1] = bR_outer.x; brPos[v1 + 1] = bR_outer.y; brPos[v1 + 2] = bR_outer.z;
+
+          // 우측 자전거도로 백색 구분선
+          const brl_L = pR.clone().add(rightVec.clone().multiplyScalar(0.06));
+          const brl_R = pR.clone().add(rightVec.clone().multiplyScalar(0.13));
+          brl_L.y += 0.03; brl_R.y += 0.03;
+
+          brlPos[v0] = brl_L.x; brlPos[v0 + 1] = brl_L.y; brlPos[v0 + 2] = brl_L.z;
+          brlPos[v1] = brl_R.x; brlPos[v1 + 1] = brl_R.y; brlPos[v1 + 2] = brl_R.z;
+
+          // 5. 좌측 깊은 에메랄드 염하강 해협 (bL_outer 끝에서 2,500m 바다)
+          const seaNear = bL_outer.clone(); seaNear.y = 0.5;
+          const seaFar = bL_outer.clone().add(leftVec.clone().multiplyScalar(2500)); seaFar.y = 0.5;
+
+          sPos[v0] = seaNear.x; sPos[v0 + 1] = seaNear.y; sPos[v0 + 2] = seaNear.z;
+          sPos[v1] = seaFar.x;  sPos[v1 + 1] = seaFar.y;  sPos[v1 + 2] = seaFar.z;
+
+          // 6. 우측 김포 내륙 지형 사면 (bR_outer 끝에서 45m 완경사 사면)
+          const landNear = bR_outer.clone();
+          landNear.y = bR_outer.y - 0.18;
+          const landFar = bR_outer.clone().add(rightVec.clone().multiplyScalar(45));
+          landFar.y = 0.9 + Math.max(-0.35, Math.min(0.45, pt.y - 6.2)) * 0.18;
+
+          lPos[v0] = landNear.x; lPos[v0 + 1] = landNear.y; lPos[v0 + 2] = landNear.z;
+          lPos[v1] = landFar.x;  lPos[v1 + 1] = landFar.y;  lPos[v1 + 2] = landFar.z;
+
+          // ---------------------------------------------------------------------
+          // ★ 양측 4열 가드레일 설치
+          // ---------------------------------------------------------------------
+          // (1) 좌측 외측 가드레일 (bL_outer 수변 경계)
+          const rlo_bot = bL_outer.clone().add(new THREE.Vector3(0, 0.40, 0));
+          const rlo_top = bL_outer.clone().add(new THREE.Vector3(0, 0.75, 0));
+          rloPos[v0] = rlo_bot.x; rloPos[v0 + 1] = rlo_bot.y; rloPos[v0 + 2] = rlo_bot.z;
+          rloPos[v1] = rlo_top.x; rloPos[v1 + 1] = rlo_top.y; rloPos[v1 + 2] = rlo_top.z;
+
+          // (2) 좌측 내측 가드레일 (pL 경계, 차도-자전거길 분리)
+          const rli_bot = pL.clone().add(new THREE.Vector3(0, 0.40, 0));
+          const rli_top = pL.clone().add(new THREE.Vector3(0, 0.75, 0));
+          rliPos[v0] = rli_bot.x; rliPos[v0 + 1] = rli_bot.y; rliPos[v0 + 2] = rli_bot.z;
+          rliPos[v1] = rli_top.x; rliPos[v1 + 1] = rli_top.y; rliPos[v1 + 2] = rli_top.z;
+
+          // (3) 우측 내측 가드레일 (pR 경계, 차도-자전거길 분리)
+          const rri_bot = pR.clone().add(new THREE.Vector3(0, 0.40, 0));
+          const rri_top = pR.clone().add(new THREE.Vector3(0, 0.75, 0));
+          rriPos[v0] = rri_bot.x; rriPos[v0 + 1] = rri_bot.y; rriPos[v0 + 2] = rri_bot.z;
+          rriPos[v1] = rri_top.x; rriPos[v1 + 1] = rri_top.y; rriPos[v1 + 2] = rri_top.z;
+
+          // (4) 우측 외측 가드레일 (bR_outer 경계, 자전거길-숲 분리)
+          const rro_bot = bR_outer.clone().add(new THREE.Vector3(0, 0.40, 0));
+          const rro_top = bR_outer.clone().add(new THREE.Vector3(0, 0.75, 0));
+          rroPos[v0] = rro_bot.x; rroPos[v0 + 1] = rro_bot.y; rroPos[v0 + 2] = rro_bot.z;
+          rroPos[v1] = rro_top.x; rroPos[v1 + 1] = rro_top.y; rroPos[v1 + 2] = rro_top.z;
+
+          if (i % 4 === 0) {
+            // 좌측 외측 기둥
+            const p1 = new THREE.Mesh(postGeo, postMat);
+            p1.position.copy(bL_outer).add(new THREE.Vector3(0, 0.45, 0));
+            guardrailPostGroup.add(p1);
+
+            // 좌측 내측 기둥
+            const p2 = new THREE.Mesh(postGeo, postMat);
+            p2.position.copy(pL).add(new THREE.Vector3(0, 0.45, 0));
+            guardrailPostGroup.add(p2);
+
+            // 우측 내측 기둥
+            const p3 = new THREE.Mesh(postGeo, postMat);
+            p3.position.copy(pR).add(new THREE.Vector3(0, 0.45, 0));
+            guardrailPostGroup.add(p3);
+
+            // 우측 외측 기둥
+            const p4 = new THREE.Mesh(postGeo, postMat);
+            p4.position.copy(bR_outer).add(new THREE.Vector3(0, 0.45, 0));
+            guardrailPostGroup.add(p4);
+          }
+
+          // 소나무 (우측 지형에 정확히 안착)
+          if (i % 7 === 0) {
+            const tree = createPineTree(i);
+            tree.scale.setScalar(0.72 + (i * 37 % 41) / 100);
+            tree.rotation.y = (i * 1.618) % (Math.PI * 2);
+            const treeOffset = 2.8 + (i * 13 % 15) * 0.4;
+            const treePos = bR_outer.clone().add(rightVec.clone().multiplyScalar(treeOffset));
+            // 나무 밑동이 사면의 보간된 지면에 닿도록 맞춤 (공중 부양 방지)
+            const slopeT = Math.min(1, treeOffset / 45);
+            const groundY = landNear.y + (landFar.y - landNear.y) * slopeT;
+            treePos.y = groundY - 0.10;
+            tree.position.copy(treePos);
+            treeGroup.add(tree);
+          }
+        }
+
+        roadGeo.attributes.position.needsUpdate = true;
+        roadGeo.computeVertexNormals();
+
+        centerLineGeo.attributes.position.needsUpdate = true;
+        centerLineGeo.computeVertexNormals();
+
+        bikeLeftGeo.attributes.position.needsUpdate = true;
+        bikeLeftGeo.computeVertexNormals();
+
+        bikeLeftLineGeo.attributes.position.needsUpdate = true;
+        bikeLeftLineGeo.computeVertexNormals();
+
+        bikeRightGeo.attributes.position.needsUpdate = true;
+        bikeRightGeo.computeVertexNormals();
+
+        bikeRightLineGeo.attributes.position.needsUpdate = true;
+        bikeRightLineGeo.computeVertexNormals();
+
+        seaGeo.attributes.position.needsUpdate = true;
+        seaGeo.computeVertexNormals();
+
+        landGeo.attributes.position.needsUpdate = true;
+        landGeo.computeVertexNormals();
+
+        railLeftOuterGeo.attributes.position.needsUpdate = true;
+        railLeftOuterGeo.computeVertexNormals();
+
+        railLeftInnerGeo.attributes.position.needsUpdate = true;
+        railLeftInnerGeo.computeVertexNormals();
+
+        railRightInnerGeo.attributes.position.needsUpdate = true;
+        railRightInnerGeo.computeVertexNormals();
+
+        railRightOuterGeo.attributes.position.needsUpdate = true;
+        railRightOuterGeo.computeVertexNormals();
       }
-      const status=r.approval==='approval'?'pending':'approved';
-      const {error}=await client.from('entries').insert({relay_id:r.id,name,message:msg,future_message:$('joinFuture').value.trim(),photo_path:photoPath,photo_url:photoUrl,status});
-      if(error) throw error;
-      alert(r.approval==='approval'?'제출 완료! 방장 승인 후 릴레이에 반영됩니다.':'참여 완료! 방장 화면에 바로 반영됩니다.');
-      showView('homeView');
-    }catch(e){console.error(e); alert('제출 실패: '+(e.message||e));}
-    finally{btn.disabled=false; btn.textContent='릴레이에 참여하기';}
-  }
 
-  function renderEntries(rows){
-    const host=$('relayEntries'); host.innerHTML='';
-    if(!rows?.length){host.innerHTML='<div class="simple-note">아직 참여자가 없습니다. 초대 링크를 보내보세요.</div>';return;}
-    rows.forEach(x=>{
-      const el=document.createElement('div'); el.className='entry-card';
-      const photo=x.photo_url?`<img class="entry-photo" src="${esc(x.photo_url)}" alt="">`:`<div class="entry-photo empty">사진 없음</div>`;
-      const dt=x.submitted_at?new Date(x.submitted_at).toLocaleString('ko-KR'):'';
-      el.innerHTML=`${photo}<div><div class="entry-name">${esc(x.name)} <span class="mode-badge">${x.status==='approved'?'승인':'대기'}</span></div><div class="entry-msg">${esc(x.message)}</div><div class="entry-meta">${esc(dt)}</div></div>`;
-      host.appendChild(el);
-    });
-  }
+      rebuildRoadGeometry();
 
-  async function loadRelayEntries(relayId){
-    const client=await requireSupabase();
-    const {data,error}=await client.from('entries').select('*').eq('relay_id',relayId).order('submitted_at',{ascending:true});
-    if(error) throw error; renderEntries(data||[]); return data||[];
-  }
+      // 맞은편 차량 모델링 (차종 다양화: 세단, SUV, 승합차, 소형트럭)
+      function addVehicleWheels(group, wheelOffsets) {
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
+        const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.3, 12);
+        wheelGeo.rotateZ(Math.PI / 2);
+        wheelOffsets.forEach(p => {
+          const w = new THREE.Mesh(wheelGeo, wheelMat);
+          w.position.set(p[0], p[1], p[2]);
+          group.add(w);
+        });
+      }
 
-  async function openRelayAdmin(r){
-    activeAdminRelay=r; $('relayAdminTitle').textContent=r.title; $('relayAdminSub').textContent=`${r.type} · 참여자 실시간 수집`; $('relayLiveState').textContent='참여자 목록을 불러오는 중…'; showStandalone('relayAdminView');
-    const client=await requireSupabase();
-    await loadRelayEntries(r.id);
-    if(realtimeChannel){ await client.removeChannel(realtimeChannel); realtimeChannel=null; }
-    realtimeChannel=client.channel(`relay-${r.id}`)
-      .on('postgres_changes',{event:'*',schema:'public',table:'entries',filter:`relay_id=eq.${r.id}`},async payload=>{
-        $('relayLiveState').textContent=`새 제출 반영 · ${new Date().toLocaleTimeString('ko-KR')}`;
-        await loadRelayEntries(r.id);
-      })
-      .subscribe(status=>{
-        $('relayLiveState').textContent=status==='SUBSCRIBED'?'실시간 연결됨 · 새 제출이 자동 표시됩니다.':`연결 상태: ${status}`;
+      function createSedanModel(color) {
+        const car = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color, metalness: 0.72, roughness: 0.28 });
+        const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.68, 4.5), bodyMat);
+        lowerBody.position.y = 0.92;
+        car.add(lowerBody);
+        const cabin = new THREE.Mesh(
+          new THREE.BoxGeometry(1.65, 0.65, 2.1),
+          new THREE.MeshStandardMaterial({ color: 0x172033, roughness: 0.15, metalness: 0.88 })
+        );
+        cabin.position.set(0, 1.45, -0.1);
+        car.add(cabin);
+        const front = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.3, 0.08), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        front.position.set(0, 0.95, 2.24);
+        car.add(front);
+        const rear = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.08), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        rear.position.set(0, 0.95, -2.24);
+        car.add(rear);
+        addVehicleWheels(car, [[-0.98, 0.42, 1.35], [0.98, 0.42, 1.35], [-0.98, 0.42, -1.35], [0.98, 0.42, -1.35]]);
+        return car;
+      }
+
+      function createSUVModel(color) {
+        const car = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color, metalness: 0.8, roughness: 0.2 });
+        const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.85, 4.4), bodyMat);
+        lowerBody.position.y = 1.0;
+        car.add(lowerBody);
+        const cabinMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.8, 2.5), cabinMat);
+        cabin.position.set(0, 1.75, -0.2);
+        car.add(cabin);
+        const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.18, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        hlL.position.set(-0.85, 1.05, 2.21);
+        const hlR = hlL.clone();
+        hlR.position.x = 0.85;
+        car.add(hlL);
+        car.add(hlR);
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.15, 0.1), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        tl.position.set(0, 1.10, -2.21);
+        car.add(tl);
+        addVehicleWheels(car, [[-1.15, 0.45, 1.3], [1.15, 0.45, 1.3], [-1.15, 0.45, -1.3], [1.15, 0.45, -1.3]]);
+        return car;
+      }
+
+      function createVanModel(color) {
+        const car = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color, metalness: 0.7, roughness: 0.25 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(2.35, 1.5, 5.0), bodyMat);
+        body.position.y = 1.3;
+        car.add(body);
+        const windshield = new THREE.Mesh(
+          new THREE.BoxGeometry(1.95, 0.75, 1.5),
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.12, metalness: 0.88 })
+        );
+        windshield.position.set(0, 1.8, 1.0);
+        car.add(windshield);
+        const front = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.18, 0.08), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        front.position.set(0, 1.12, 2.52);
+        car.add(front);
+        const rear = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.14, 0.08), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        rear.position.set(0, 1.1, -2.52);
+        car.add(rear);
+        addVehicleWheels(car, [[-1.08, 0.45, 1.7], [1.08, 0.45, 1.7], [-1.08, 0.45, -1.7], [1.08, 0.45, -1.7]]);
+        return car;
+      }
+
+      function createMiniTruckModel(color) {
+        const car = new THREE.Group();
+        const cabMat = new THREE.MeshStandardMaterial({ color, metalness: 0.68, roughness: 0.35 });
+        const cargoMat = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, metalness: 0.25, roughness: 0.78 });
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.35, 1.9), cabMat);
+        cab.position.set(0, 1.2, 1.2);
+        car.add(cab);
+        const cargo = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.2, 2.8), cargoMat);
+        cargo.position.set(0, 1.15, -1.0);
+        car.add(cargo);
+        const front = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.18, 0.08), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        front.position.set(0, 1.0, 2.08);
+        car.add(front);
+        const rear = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.15, 0.08), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        rear.position.set(0, 1.0, -2.42);
+        car.add(rear);
+        addVehicleWheels(car, [[-0.95, 0.42, 1.0], [0.95, 0.42, 1.0], [-0.95, 0.42, -1.75], [0.95, 0.42, -1.75]]);
+        return car;
+      }
+
+      const vehicleFactories = [
+        { type: 'sedan', create: createSedanModel, colors: [0x2563eb, 0xf8fafc, 0x111827, 0xdc2626], speedRange: [33, 44] },
+        { type: 'suv', create: createSUVModel, colors: [0x059669, 0xd97706, 0x475569, 0x7c3aed], speedRange: [31, 41] },
+        { type: 'van', create: createVanModel, colors: [0xffffff, 0xf59e0b, 0x0f766e, 0x334155], speedRange: [28, 37] },
+        { type: 'truck', create: createMiniTruckModel, colors: [0xdc2626, 0x0284c7, 0x475569, 0x16a34a], speedRange: [26, 35] }
+      ];
+
+      const ONCOMING_COUNT = 42;
+      const oncomingCars = [];
+
+      for (let i = 0; i < ONCOMING_COUNT; i++) {
+        const typeIndex = i % 20;
+        const profile = vehicleFactories[typeIndex < 9 ? 0 : typeIndex < 14 ? 1 : typeIndex < 17 ? 2 : 3];
+        const color = profile.colors[(i * 7 + Math.floor(i / 4)) % profile.colors.length];
+        const carMesh = profile.create(color);
+        scene.add(carMesh);
+        const minSpeed = profile.speedRange[0];
+        const maxSpeed = profile.speedRange[1];
+        const speed = minSpeed + ((i * 7) % (maxSpeed - minSpeed + 1));
+
+        oncomingCars.push({
+          group: carMesh,
+          dist: ((TOTAL_ROAD_LENGTH / ONCOMING_COUNT) * (i + 0.10 * Math.sin(i * 17.3))) % TOTAL_ROAD_LENGTH,
+          speed,
+          type: profile.type
+        });
+      }
+
+      // 카메라 위치
+      let playerDist = 0;
+      let playerSpeedKmh = 35;
+      let isPaused = false;
+      let viewMode = 2; // 승합차 시점 기본
+
+      function updateCameraView() {
+        const pt = getRoadCenterPoint(playerDist);
+        const rightVec = getRoadRightVector(playerDist);
+        const fwd = getRoadTangent(playerDist);
+
+        let laneCenter = pt.clone().add(rightVec.clone().multiplyScalar(1.8));
+
+        if (viewMode === 0) {
+          camera.fov = 50;
+          const pos = laneCenter.clone().sub(fwd.clone().multiplyScalar(7.2)).add(new THREE.Vector3(0, 3.0, 0));
+          camera.position.copy(pos);
+          const target = laneCenter.clone().add(fwd.clone().multiplyScalar(24));
+          camera.lookAt(target);
+        } else if (viewMode === 1) {
+          camera.fov = 52;
+          camera.position.set(laneCenter.x, laneCenter.y + 1.5, laneCenter.z).add(fwd.clone().multiplyScalar(0.55));
+          const target = camera.position.clone().add(fwd.clone().multiplyScalar(38));
+          camera.lookAt(target);
+        } else if (viewMode === 2) {
+          camera.fov = 50;
+          camera.position.set(laneCenter.x, laneCenter.y + 1.8, laneCenter.z).sub(fwd.clone().multiplyScalar(1.4));
+          const target = laneCenter.clone().add(fwd.clone().multiplyScalar(36)).add(new THREE.Vector3(0, 0.35, 0));
+          camera.lookAt(target);
+        }
+
+        camera.updateProjectionMatrix();
+      }
+
+      // UI 이벤트 바인딩
+      const headerSecName = document.getElementById('header-sec-name');
+      const hudDist = document.getElementById('hud-dist');
+      const hudTimer = document.getElementById('hud-timer');
+      const hudSpeed = document.getElementById('hud-speed');
+
+      const adjustDrawer = document.getElementById('adjust-drawer');
+      const btnDrawerClose = document.getElementById('btn-drawer-close');
+      const btnHeaderSecTrigger = document.getElementById('btn-header-sec-trigger');
+
+      const toastPopup = document.getElementById('toast-popup');
+      const toastText = document.getElementById('toast-text');
+
+      let activeSectionIdx = 0;
+      // 브라우저 실행 시 최초 시작 기준 시간. 일시정지/구간 이동에도 초기화되지 않음.
+      const simulationStartTime = performance.now();
+
+      function showToast(msg) {
+        toastText.textContent = msg;
+        toastPopup.classList.remove('opacity-0', '-translate-y-2');
+        toastPopup.classList.add('opacity-100', 'translate-y-0');
+        setTimeout(() => {
+          toastPopup.classList.remove('opacity-100', 'translate-y-0');
+          toastPopup.classList.add('opacity-0', '-translate-y-2');
+        }, 2200);
+      }
+
+      function updateDrawerValues(idx) {
+        activeSectionIdx = idx;
+        const sec = sectionData[idx];
+        document.getElementById('slider-amp').value = sec.amp;
+        document.getElementById('slider-wl').value = Math.max(50, sec.wl);
+        document.getElementById('slider-speed').value = Math.min(50, sec.speed);
+
+        document.getElementById('drawer-amp-val').textContent = sec.amp + "m";
+        document.getElementById('drawer-wl-val').textContent = Math.max(50, sec.wl) + "m";
+        document.getElementById('drawer-speed-val').textContent = Math.min(50, sec.speed) + " km/h";
+
+        document.querySelectorAll('.sec-tab-btn').forEach((btn, i) => {
+          btn.className = (i === idx)
+            ? "sec-tab-btn py-1.5 text-[11px] font-bold rounded-lg bg-emerald-500 text-slate-950"
+            : "sec-tab-btn py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:bg-slate-800";
+        });
+      }
+
+      function toggleDrawer(open) {
+        if (open) {
+          adjustDrawer.classList.remove('translate-y-full');
+          updateDrawerValues(activeSectionIdx);
+        } else {
+          adjustDrawer.classList.add('translate-y-full');
+        }
+      }
+
+      btnHeaderSecTrigger.addEventListener('click', () => {
+        const { idx } = getSectionAtDistance(playerDist);
+        toggleDrawer(true);
+        updateDrawerValues(idx);
       });
-  }
 
-  // events
-  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
-  document.querySelectorAll('[data-home]').forEach(btn=>btn.addEventListener('click',()=>showView('homeView')));
-  document.querySelectorAll('[data-personal]').forEach(btn=>btn.addEventListener('click',()=>{
-    const mode=btn.dataset.personal;
-    state.tab=mode;
-    if(mode==='dream' && !(state.stage==='kindergarten'||state.stage==='elementary')) state.stage='elementary';
-    $('stageSelect').value=state.stage;
-    updateModeTabs(); renderCards(); openPanel();
-    setStatus(state.face ? '✓ 얼굴 준비됨 · 카드를 선택하세요' : '얼굴 등록 → 학령 선택 → 카드 선택', state.face ? 'ok' : '');
-  }));
-  document.querySelectorAll('[data-proto]').forEach(btn=>btn.addEventListener('click',()=>{ alert(`${btn.dataset.proto} 기능은 다음 단계에서 연결합니다.`); }));
-  $('newRelayBtn').addEventListener('click', openNewRelay);
-  $('activeRelayBtn').addEventListener('click', ()=>showRelayList('active'));
-  $('completedRelayBtn').addEventListener('click', ()=>showRelayList('completed'));
-  $('relayFormBack').addEventListener('click', ()=>showView('relayView'));
-  $('relayListBack').addEventListener('click', ()=>showView('relayView'));
-  $('relayAdminBack').addEventListener('click', async ()=>{ try{if(realtimeChannel&&sb){await sb.removeChannel(realtimeChannel);realtimeChannel=null;}}catch(_){} showRelayList('active'); });
-  $('joinBack').addEventListener('click', ()=>showView('relayView'));
-  $('createRelayBtn').addEventListener('click', createRelay);
-  $('submitJoinBtn').addEventListener('click', submitJoin);
-  $('closeBtn').addEventListener('click', closePanel);
-  $('resultBackBtn').addEventListener('click', returnFromResult);
-  window.addEventListener('popstate', ()=>{ if($('resultBackBtn')?.classList.contains('show')) returnFromResult(); });
-  $('saveBtn').addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); saveCurrent(); });
-  $('regenBtn').addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); if(state.lastKey && !state.busy) generate(state.lastKey, state.lastLabel, true); });
-  $('faceInput').addEventListener('change', async e=>{
-    const file = e.target.files?.[0];
-    if(file) await saveFace(file);
-    e.target.value = '';
-  });
-  $('stageSelect').addEventListener('change', e=>{
-    state.stage = e.target.value;
-    state.tab = 'today';
-    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab==='today'));
-    renderCards();
-    setStatus(state.face ? '✓ 얼굴 준비됨 · 카드를 선택하세요' : '얼굴 등록 → 학령 선택 → 카드 선택', state.face ? 'ok' : '');
-  });
-  document.querySelectorAll('.tab').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      if(btn.disabled || btn.hidden) return;
-      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-      btn.classList.add('active');
-      state.tab = btn.dataset.tab;
-      renderCards();
-    });
-  });
+      btnDrawerClose.addEventListener('click', () => toggleDrawer(false));
 
-  const joinParam=new URL(location.href).searchParams.get('join');
-  if(joinParam){ setTimeout(()=>openJoin(joinParam),0); }
+      document.querySelectorAll('.sec-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.target.dataset.sec, 10);
+          updateDrawerValues(idx);
+          playerDist = sectionData[idx].start + 10;
+        });
+      });
 
-  initSupabase().catch(e=>console.warn('Supabase not configured:',e.message));
+      document.getElementById('slider-amp').addEventListener('input', e => document.getElementById('drawer-amp-val').textContent = e.target.value + "m");
+      document.getElementById('slider-wl').addEventListener('input', e => document.getElementById('drawer-wl-val').textContent = e.target.value + "m");
+      document.getElementById('slider-speed').addEventListener('input', e => document.getElementById('drawer-speed-val').textContent = Math.min(50, parseInt(e.target.value, 10)) + " km/h");
 
-  const d=new Date(); const mon=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][d.getMonth()]; const day=['SUN','MON','TUE','WED','THU','FRI','SAT'][d.getDay()]; $('datePill').textContent=`${d.getFullYear()} ${mon}  |  ${day} ${String(d.getDate()).padStart(2,'0')}`;
-  restoreFace().then(renderCards);
-})();
-</script>
+      document.getElementById('btn-save-section').addEventListener('click', () => {
+        const amp = parseFloat(document.getElementById('slider-amp').value);
+        const wl = parseFloat(document.getElementById('slider-wl').value);
+        const spd = Math.min(50, parseInt(document.getElementById('slider-speed').value, 10));
+
+        sectionData[activeSectionIdx].amp = amp;
+        sectionData[activeSectionIdx].wl = wl;
+        sectionData[activeSectionIdx].speed = spd;
+
+        rebuildRoadPhase();
+        rebuildRoadGeometry();
+        toggleDrawer(false);
+        showToast(`${sectionData[activeSectionIdx].name} 저장 완료!`);
+      });
+
+      document.getElementById('btn-reset-defaults').addEventListener('click', () => {
+        sectionData = JSON.parse(JSON.stringify(defaultSections));
+        rebuildRoadPhase();
+        rebuildRoadGeometry();
+        updateDrawerValues(activeSectionIdx);
+        showToast("기본 설계값으로 복원되었습니다.");
+      });
+
+      function setViewMode(mode) {
+        viewMode = mode;
+        ['btn-view-drone1', 'btn-view-driver', 'btn-view-van'].forEach((id, idx) => {
+          document.getElementById(id).className = (idx === mode)
+            ? "px-2.5 py-1.5 rounded-xl text-xs font-black bg-emerald-500 text-slate-950"
+            : "px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700";
+        });
+      }
+
+      document.getElementById('btn-view-drone1').addEventListener('click', () => setViewMode(0));
+      document.getElementById('btn-view-driver').addEventListener('click', () => setViewMode(1));
+      document.getElementById('btn-view-van').addEventListener('click', () => setViewMode(2));
+
+      const btnPause = document.getElementById('btn-pause');
+      btnPause.addEventListener('click', () => {
+        isPaused = !isPaused;
+        btnPause.innerHTML = isPaused ? "▶️ <span class='hidden sm:inline'>재생</span>" : "⏸️ <span class='hidden sm:inline'>일시정지</span>";
+      });
+
+      // 메인 애니메이션 루프
+      let lastTime = performance.now();
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const now = performance.now();
+        const dt = Math.min((now - lastTime) / 1000, 0.1);
+        lastTime = now;
+
+        // 실제 경과 시간은 프레임 속도나 일시정지 상태와 무관하게 최초 시작부터 계산.
+        const totalElapsedTimeSec = Math.floor((now - simulationStartTime) / 1000);
+        const mins = Math.floor(totalElapsedTimeSec / 60).toString().padStart(2, '0');
+        const secs = (totalElapsedTimeSec % 60).toString().padStart(2, '0');
+        hudTimer.textContent = `${mins}:${secs}`;
+
+        if (!isPaused) {
+          const { sec, idx } = getSectionAtDistance(playerDist);
+          activeSectionIdx = idx;
+
+          const targetKmh = Math.min(50, sec.speed || 35);
+          playerSpeedKmh += (targetKmh - playerSpeedKmh) * 0.05;
+
+          const mps = (playerSpeedKmh * 1000) / 3600;
+          playerDist = (playerDist + mps * dt) % TOTAL_ROAD_LENGTH;
+
+          headerSecName.textContent = `현재구간: ${sec.name}`;
+          hudDist.textContent = `${Math.floor(playerDist).toLocaleString()} m`;
+          hudSpeed.textContent = `${Math.round(playerSpeedKmh)} km/h`;
+
+          // 맞은편 차량: 스쳐 지나감 (사라짐 없이 자연스러운 교행)
+          oncomingCars.forEach(car => {
+            const mps = (car.speed * 1000) / 3600;
+            car.dist = ((car.dist - mps * dt) + TOTAL_ROAD_LENGTH) % TOTAL_ROAD_LENGTH;
+
+            const pt = getRoadCenterPoint(car.dist);
+            const leftVec = getRoadLeftVector(car.dist);
+            const fwd = getRoadTangent(car.dist);
+
+            const carPos = pt.clone().add(leftVec.clone().multiplyScalar(1.8));
+            car.group.position.copy(carPos);
+
+            const forward = fwd.clone().negate();
+            car.group.lookAt(carPos.clone().add(forward));
+          });
+        }
+
+        updateCameraView();
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    })();
+  </script>
 </body>
 </html>
