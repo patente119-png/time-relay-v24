@@ -1,10 +1,14 @@
-# TIME RELAY V24.3.2 Identity + Drill Fix
+# TIME RELAY V24.3.3 — Exact Face Lock + Confirmed Drill Style
 
-- Stronger identity preservation for fal.ai FLUX Kontext and OpenAI fallback.
-- Conservative age regression: same recognizable face, no generic-face substitution or gender swap.
-- Historical drill uniform refined to dense black maze/squiggle pattern on off-white fabric.
-- Matching soft drill cap with simple 高/中 mark; no military/naval crest.
-- Period rectangular gray-green school satchel and 1970s–1980s classroom with briquette heater + metal lunch boxes.
-- Keeps V24.3 multi-provider routing and V24.3.1 back-button behavior.
+이번 버전은 결과 품질 고정 버전입니다.
 
-Deploy by uploading the CONTENTS of this folder to the GitHub repository root. Keep Vercel Root Directory as `./`.
+- 등록된 얼굴의 나이/성별/이목구비를 그대로 유지합니다.
+- 고등학생처럼 젊게 만들거나 나이를 바꾸지 않습니다.
+- 교련복은 흰/아이보리 바탕의 촘촘한 검정 불규칙 곡선 무늬로 고정합니다.
+- 교련복 모자는 검정 고교모(둥근 크라운 + 검정 유광 챙 + 금색 高 표식)로 고정합니다.
+- 결과 사진 화면에서는 별/점 장식을 완전히 숨깁니다.
+- V24.3 Multi Provider(fal/OpenAI), Supabase, 저장/다시 만들기, 뒤로가기 기능을 유지합니다.
+
+## 배포
+압축을 풀고 내부 파일들을 GitHub 저장소 루트에 덮어쓴 뒤 Commit하세요.
+Vercel Root Directory는 `./` 그대로 유지합니다.
