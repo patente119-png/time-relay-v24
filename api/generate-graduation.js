@@ -2,8 +2,8 @@ import { fal } from '@fal-ai/client';
 
 const LOOKS = {
   high_memory_drill: `Keep the protected face pixels exactly unchanged. Edit only the unprotected region.
-Create a realistic 1970s–1980s Korean school-memory portrait. Replace clothing with the confirmed school-drill uniform: warm white/ivory fabric densely covered with irregular black curved maze-like squiggles, matching the historical reference style. No gray cloud spots, no digital camouflage, no khaki or green military camouflage.
-Add the confirmed vintage Korean high-school cap: black or very dark navy rounded cloth crown, narrow glossy black band, short glossy black visor, small centered gold 高 emblem. It must sit naturally on the head. Add a period rectangular boxy gray-green student satchel with simple metal clasp. Use a realistic old Korean classroom with green chalkboard, worn wooden desks, aged windows, briquette heater and metal lunch boxes. This is a civilian student memory scene, never a military scene.`,
+Create a realistic 1970s–1980s Korean school-memory portrait. Replace clothing with the FINAL CONFIRMED school-drill uniform pattern from the supplied reference: warm white or ivory fabric covered edge-to-edge with dense, bold, high-contrast black irregular curved maze-like motifs. The black motifs must be thicker, more numerous and more continuous than scattered spots. Use the same pattern across the full jacket and trousers. Absolutely no gray cloud blotches, no tiny dots, no sparse camouflage spots, no leopard print, no digital camouflage, no khaki, no olive, no green military camouflage.
+Add the FINAL CONFIRMED vintage Korean high-school cap: black or very dark navy rounded cloth crown, narrow glossy black band, short glossy black visor, small centered gold 高 emblem. It must look like a civilian old Korean high-school student cap, not a baseball cap, military officer cap or naval cap, and it must sit naturally on the head. Add a period rectangular boxy gray-green student satchel with simple metal clasp. Use a realistic old Korean classroom with green chalkboard, worn wooden desks, aged windows, briquette heater and metal lunch boxes. This is a civilian student memory scene, never a military scene.`,
   high_memory_black: `Keep the protected face pixels exactly unchanged. Change only clothing, accessories and background. Traditional 1970s–1980s Korean black or very dark navy high-school student uniform, period rectangular hard-sided school bag, old Korean school corridor or classroom.`,
   high_memory_cap: `Keep the protected face pixels exactly unchanged. Change only clothing, cap, bag and background. Traditional dark Korean high-school uniform, confirmed black/navy rounded student cap with short glossy visor and centered gold 高 emblem, old rectangular hard-sided student bag, old Korean school corridor.`,
   high_memory_girl_uniform: `Keep the protected face pixels exactly unchanged. Change only clothing, bag and background. Modest period Korean girls high-school uniform in dark navy/black, old rectangular student bag, 1970s–1980s Korean classroom or corridor.`,
@@ -50,7 +50,7 @@ Add the confirmed vintage Korean high-school cap: black or very dark navy rounde
 function buildPrompt(lookKey) {
   const edit = LOOKS[lookKey];
   if (!edit) return null;
-  return `${edit}\n\nFACE PROTECTION RULE: white mask pixels are protected source pixels and must remain unchanged. Do not redraw, beautify, de-age, age, gender-swap, smooth, stylize or reinterpret the face. Blend the edited hair/clothing/background naturally around the protected face boundary. Output a photorealistic photo only: no app UI, border, stars, dots, text, watermark, date or caption.`;
+  return `${edit}\n\nCOMPOSITION RULE — MUST FOLLOW: create a wider medium half-body portrait, framed from the top of the head down to the waist or upper hips. The person's head must occupy no more than about one quarter of the image height. Pull the virtual camera back noticeably. Show both shoulders, chest, abdomen/waist and the relevant prop (bouquet, diploma or school bag) with generous background around the person. If the reference is a close-up, OUTPAINT the missing torso and scene instead of copying the close crop. Never return a passport-photo crop, face close-up, chest-only portrait, oversized head-and-shoulders crop, or tight selfie framing.\n\nFACE PROTECTION RULE: white mask pixels are protected source pixels and must remain unchanged. Do not redraw, beautify, de-age, age, gender-swap, smooth, stylize or reinterpret the face. Blend the edited hair/clothing/background naturally around the protected face boundary. Output a photorealistic photo only: no app UI, border, stars, dots, text, watermark, date or caption.`;
 }
 
 function cleanBase64(value) {
@@ -72,7 +72,7 @@ async function generateWithFal({ imageBase64, maskBase64, mime, maskMime, prompt
       reference_image_urls: [imageUri],
       mask_url: maskUri,
       edit_precision: process.env.FAL_EDIT_PRECISION || 'high',
-      quality: process.env.FAL_EDIT_QUALITY || 'medium',
+      quality: process.env.FAL_EDIT_QUALITY || 'low',
       image_size: 'auto',
       num_images: 1,
     },

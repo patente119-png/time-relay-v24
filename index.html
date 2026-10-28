@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TIME RELAY · V24.5 Face Protected Edit</title>
+<title>TIME RELAY · V24.5.2 Wider + Fast</title>
 <style>
   :root{
     --bg:#020817; --panel:#071428; --panel2:#0b1830; --line:#29405f; --text:#f8fafc; --muted:#9fb2cb;
@@ -398,7 +398,7 @@
   };
 
   const state = {
-    face:null, faceName:'face.jpg', stage:'high', tab:'today',
+    face:null, faceName:'face.jpg', faceBase64:'', faceMaskBase64:'', faceHash:'', stage:'high', tab:'today',
     lastKey:'', lastBlob:null, lastLabel:'', busy:false, timer:null, startedAt:0
   };
 
@@ -541,17 +541,34 @@
         const el = new Image();
         el.onload=()=>resolve(el); el.onerror=reject; el.src=url;
       });
-      const maxSide = 1024;
-      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-      const w = Math.max(1, Math.round(img.naturalWidth * scale));
-      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      // V24.5.2: outpaint-ready square canvas. The source portrait is deliberately
+      // reduced inside the frame so the edit model has room to generate torso/props.
+      const S = 768;
       const canvas = document.createElement('canvas');
-      canvas.width=w; canvas.height=h;
+      canvas.width=S; canvas.height=S;
       const ctx=canvas.getContext('2d',{alpha:false});
-      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
-      ctx.drawImage(img,0,0,w,h);
+      ctx.fillStyle='#d8d8d8'; ctx.fillRect(0,0,S,S);
+
+      // Soft background fill prevents stark white borders while remaining editable.
+      const bgScale=Math.max(S/img.naturalWidth,S/img.naturalHeight);
+      const bw=img.naturalWidth*bgScale, bh=img.naturalHeight*bgScale;
+      ctx.save();
+      ctx.filter='blur(24px) brightness(.92)';
+      ctx.globalAlpha=.45;
+      ctx.drawImage(img,(S-bw)/2,(S-bh)/2,bw,bh);
+      ctx.restore();
+
+      // Keep the source person smaller to force a wider head-to-waist composition.
+      const maxDim=S*0.70;
+      const fgScale=maxDim/Math.max(img.naturalWidth,img.naturalHeight);
+      const fw=Math.round(img.naturalWidth*fgScale);
+      const fh=Math.round(img.naturalHeight*fgScale);
+      const fx=Math.round((S-fw)/2);
+      const fy=Math.round(S*0.055);
+      ctx.drawImage(img,fx,fy,fw,fh);
+
       return await new Promise((resolve,reject)=>{
-        canvas.toBlob(b=>b?resolve(b):reject(new Error('얼굴 이미지 압축 실패')),'image/jpeg',0.86);
+        canvas.toBlob(b=>b?resolve(b):reject(new Error('얼굴 이미지 압축 실패')),'image/jpeg',0.78);
       });
     }finally{ URL.revokeObjectURL(url); }
   }
@@ -581,10 +598,10 @@
       const ctx=canvas.getContext('2d',{alpha:false});
       // Ideogram V4.5 mask convention: black = edit, white = preserve.
       ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
-      // Conservative frontal-portrait face shield. Keeps facial pixels untouched,
-      // while leaving hair/top of head editable so a school cap can be added.
-      const cx=w*0.50, cy=h*0.37;
-      const rx=w*0.245, ry=h*0.285;
+      // V24.5.2 prepared portraits are intentionally smaller on a square canvas.
+      // Protect only the facial identity area while leaving hair/top editable for caps.
+      const cx=w*0.50, cy=h*0.305;
+      const rx=w*0.155, ry=h*0.19;
       ctx.fillStyle='#fff';
       ctx.beginPath();
       ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
@@ -595,27 +612,44 @@
     }finally{ URL.revokeObjectURL(url); }
   }
 
+  async function prepareFaceAssets(){
+    if(!state.face) return;
+    const [hash,b64,maskBlob] = await Promise.all([
+      sha256Blob(state.face),
+      blobToBase64(state.face),
+      buildFaceProtectMask(state.face)
+    ]);
+    state.faceHash=hash;
+    state.faceBase64=b64;
+    state.faceMaskBase64=await blobToBase64(maskBlob);
+  }
+
   async function cacheKeyFor(key){
-    const faceHash = state.face ? await sha256Blob(state.face) : 'no-face';
-    return `v24.5-face-protected:${faceHash}:${state.stage}:${key}`;
+    const faceHash = state.faceHash || (state.face ? await sha256Blob(state.face) : 'no-face');
+    return `v24.5.2-wider-fast:${faceHash}:${state.stage}:${key}`;
   }
 
   async function saveFace(file){
     const compact = await compressFace(file);
     state.face = compact;
     state.faceName = 'face.jpg';
+    await prepareFaceAssets();
     try{
       const db = await openDb();
       await idbPut(db,'kv','face',compact);
     }catch(_){}
-    setStatus('✓ 얼굴 준비됨 · 카드를 선택하세요','ok');
+    setStatus('✓ 얼굴 준비됨 · 빠른 생성 준비 완료','ok');
   }
 
   async function restoreFace(){
     try{
       const db = await openDb();
       const f = await idbGet(db,'kv','face');
-      if(f){ state.face = f; setStatus('✓ 얼굴 준비됨 · 카드를 선택하세요','ok'); }
+      if(f){
+        state.face = f;
+        await prepareFaceAssets();
+        setStatus('✓ 얼굴 준비됨 · 빠른 생성 준비 완료','ok');
+      }
     }catch(_){}
   }
 
@@ -661,9 +695,10 @@
         }catch(_){}
       }
 
-      const imageBase64 = await blobToBase64(state.face);
-      const maskBlob = await buildFaceProtectMask(state.face);
-      const maskBase64 = await blobToBase64(maskBlob);
+      // Reuse precomputed face payload + mask. Regenerate no longer repeats preprocessing.
+      if(!state.faceBase64 || !state.faceMaskBase64) await prepareFaceAssets();
+      const imageBase64 = state.faceBase64;
+      const maskBase64 = state.faceMaskBase64;
       const res = await fetch('/api/generate-graduation', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
