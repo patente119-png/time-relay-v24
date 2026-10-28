@@ -3,7 +3,7 @@ export default async function handler(req, res) {
   const falModel = process.env.FAL_FACE_EDIT_MODEL || 'ideogram/v4.5/edit';
   return res.status(200).json({
     ok: true,
-    version: 'V24.5.3 Exact Face + Composition Fix',
+    version: 'V24.5.4 Headgear + Frame Fix',
     provider,
     model: provider === 'fal' ? falModel : (process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2'),
     providerKeyConfigured: provider === 'fal' ? Boolean(process.env.FAL_KEY) : Boolean(process.env.OPENAI_API_KEY),

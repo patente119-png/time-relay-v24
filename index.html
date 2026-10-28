@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TIME RELAY · V24.5.3 Exact Face + Composition Fix</title>
+<title>TIME RELAY · V24.5.4 Headgear + Frame Fix</title>
 <style>
   :root{
     --bg:#020817; --panel:#071428; --panel2:#0b1830; --line:#29405f; --text:#f8fafc; --muted:#9fb2cb;
@@ -571,7 +571,22 @@
       const fh=Math.round(img.naturalHeight*fgScale);
       const fx=Math.round((S-fw)/2);
       const fy=Math.round(S*0.055);
-      ctx.drawImage(img,fx,fy,fw,fh);
+      // V24.5.4: feather the source-photo outer rectangle so the edit model does
+      // not preserve a visible passport-photo/inset-frame edge. The central face
+      // stays crisp while only the OUTER edges of the source photo fade into the
+      // editable background.
+      const fg=document.createElement('canvas');
+      fg.width=fw; fg.height=fh;
+      const fctx=fg.getContext('2d');
+      fctx.drawImage(img,0,0,fw,fh);
+      fctx.globalCompositeOperation='destination-in';
+      const edge=Math.max(18,Math.round(Math.min(fw,fh)*0.08));
+      const g=fctx.createRadialGradient(fw/2,fh*0.42,Math.min(fw,fh)*0.34,fw/2,fh*0.42,Math.min(fw,fh)*0.58);
+      g.addColorStop(0,'rgba(0,0,0,1)');
+      g.addColorStop(0.78,'rgba(0,0,0,1)');
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      fctx.fillStyle=g; fctx.fillRect(0,0,fw,fh);
+      ctx.drawImage(fg,fx,fy);
 
       return await new Promise((resolve,reject)=>{
         canvas.toBlob(b=>b?resolve(b):reject(new Error('얼굴 이미지 압축 실패')),'image/jpeg',0.78);
@@ -633,7 +648,7 @@
 
   async function cacheKeyFor(key){
     const faceHash = state.faceHash || (state.face ? await sha256Blob(state.face) : 'no-face');
-    return `v24.5.3-exact-face-composition:${faceHash}:${state.stage}:${key}`;
+    return `v24.5.4-headgear-frame:${faceHash}:${state.stage}:${key}`;
   }
 
   async function saveFace(file){
