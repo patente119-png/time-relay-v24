@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TIME RELAY · V24.5.2 Wider + Fast</title>
+<title>TIME RELAY · V24.5.3 Exact Face + Composition Fix</title>
 <style>
   :root{
     --bg:#020817; --panel:#071428; --panel2:#0b1830; --line:#29405f; --text:#f8fafc; --muted:#9fb2cb;
@@ -443,6 +443,12 @@
     $(id)?.classList.add('show');
     $('homeFooter').style.display = id==='homeView' ? 'flex' : 'none';
     $('resultBackBtn')?.classList.remove('show');
+    // V24.5.3: never show a previous generated photo behind the initial home view.
+    if(id==='homeView'){
+      $('resultBg').style.backgroundImage='none';
+      $('saveBtn').disabled=true;
+      $('regenBtn').disabled=true;
+    }
   }
   function openPanel(){ hideViews(); $('homeFooter').style.display='none'; $('resultBackBtn')?.classList.remove('show'); $('panel').classList.add('show'); }
   function closePanel(){ $('panel').classList.remove('show'); showView('myTimeView'); }
@@ -600,8 +606,9 @@
       ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
       // V24.5.2 prepared portraits are intentionally smaller on a square canvas.
       // Protect only the facial identity area while leaving hair/top editable for caps.
-      const cx=w*0.50, cy=h*0.305;
-      const rx=w*0.155, ry=h*0.19;
+      const cx=w*0.50, cy=h*0.295;
+      // V24.5.3: larger identity shield preserves face, cheeks, jaw and ears.
+      const rx=w*0.195, ry=h*0.225;
       ctx.fillStyle='#fff';
       ctx.beginPath();
       ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
@@ -626,7 +633,7 @@
 
   async function cacheKeyFor(key){
     const faceHash = state.faceHash || (state.face ? await sha256Blob(state.face) : 'no-face');
-    return `v24.5.2-wider-fast:${faceHash}:${state.stage}:${key}`;
+    return `v24.5.3-exact-face-composition:${faceHash}:${state.stage}:${key}`;
   }
 
   async function saveFace(file){

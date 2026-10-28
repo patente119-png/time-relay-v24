@@ -1,13 +1,15 @@
-# TIME RELAY V24.5.2 — Wider Composition + Fast Generate
+# TIME RELAY V24.5.3 — Exact Face + Composition Fix
 
-Changes:
-- Prepares the registered portrait on a 768x768 outpaint-ready canvas so the subject appears smaller and the model has room to create a head-to-waist composition.
-- Strongly rejects face close-up / chest-only / passport-photo framing.
-- Keeps the confirmed drill-uniform pattern: ivory base + dense bold black curved maze-like motifs.
-- Reuses precomputed face Base64 + protection mask for regenerate, avoiding repeated browser preprocessing.
-- Default fal edit quality is `low` for faster generation while `FAL_EDIT_PRECISION=high` remains recommended for face protection.
+- Stronger exact-face protection mask: wider cheeks, jaw and ear coverage.
+- No de-aging, beautifying, gender swap or identity substitution.
+- Home screen clears any previous generated-photo background.
+- Wider head-to-waist / upper-hip composition; rejects face-close and chest-only crops.
+- Graduation caps and vintage high-school caps sit slightly forward.
+- Confirmed drill-uniform pattern remains ivory/white with dense bold black curved maze motifs.
+- One rectangular vintage student satchel with visible handle and natural grip; rejects warped/floating bags and fused hands.
+- Keeps V24.5.2 preprocessing/cache speed optimizations.
 
-Deploy: upload the contents of this folder to the GitHub repository root, commit, and keep Vercel Root Directory as `./`.
+Deploy: upload the CONTENTS of this folder to the GitHub repository root, commit, and keep Vercel Root Directory as `./`.
 
 Recommended Vercel env:
 - IMAGE_PROVIDER=fal
