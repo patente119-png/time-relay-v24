@@ -1,21 +1,33 @@
-# TIME RELAY V24.3.4 — Exact Face Lock + Confirmed Drill Style
+# TIME RELAY V24.4 — Exact Identity Edit
 
-이번 버전은 결과 품질 고정 버전입니다.
+핵심 변경:
+- fal 기본 모델을 `blackforestlabs/flux-3/edit-image`로 변경
+- 새 사람을 생성하는 방식이 아니라 등록사진을 직접 편집
+- 등록 얼굴의 나이/성별/표정/얼굴형/헤어를 바꾸지 않도록 프롬프트 강화
+- 고교모자: 검정/남색 둥근 학생모 + 짧은 유광 챙 + 금색 高
+- 교련복: 아이보리 바탕 + 검정 곡선/미로형 고밀도 무늬
+- 결과 화면 별/점 장식 숨김 유지
+- 모바일 홈 Fix 유지
 
-- 등록된 얼굴의 나이/성별/이목구비를 그대로 유지합니다.
-- 고등학생처럼 젊게 만들거나 나이를 바꾸지 않습니다.
-- 교련복은 흰/아이보리 바탕의 촘촘한 검정 불규칙 곡선 무늬로 고정합니다.
-- 교련복 모자는 검정 고교모(둥근 크라운 + 검정 유광 챙 + 금색 高 표식)로 고정합니다.
-- 결과 사진 화면에서는 별/점 장식을 완전히 숨깁니다.
-- V24.3 Multi Provider(fal/OpenAI), Supabase, 저장/다시 만들기, 뒤로가기 기능을 유지합니다.
+## 중요: fal API Key 권한
+기존 키가 `fal-ai/flux-pro/kontext`만 허용한다면 V24.4는 Forbidden이 납니다.
+fal API Key의 Allowed models에 아래 모델을 추가하거나 새 키를 발급하세요.
 
-## 배포
-압축을 풀고 내부 파일들을 GitHub 저장소 루트에 덮어쓴 뒤 Commit하세요.
-Vercel Root Directory는 `./` 그대로 유지합니다.
+`blackforestlabs/flux-3/edit-image`
 
+Vercel Environment Variables:
+- `IMAGE_PROVIDER=fal`
+- `FAL_KEY=...`
+- `FAL_EDIT_MODEL=blackforestlabs/flux-3/edit-image`
+- `FAL_EDIT_RESOLUTION=1k`
 
-## V24.3.4 Mobile Home Fix
-- 결과 전용 다시 만들기/저장 버튼은 result-mode에서만 표시
-- 모바일 body 상단 정렬로 초기 화면이 아래로 밀리는 현상 수정
-- 모바일 홈 메뉴 간격과 하단 날짜/RELAY 영역 재배치
-- 홈 화면 터치 가로막는 결과 버튼 레이어 제거
+기존 OpenAI/Supabase 변수는 유지합니다.
+
+배포 후 확인:
+`/api/health`
+
+정상 예:
+- version: V24.4 Exact Identity Edit
+- provider: fal
+- model: blackforestlabs/flux-3/edit-image
+- identityMode: edit-existing-photo

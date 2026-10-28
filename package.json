@@ -1,6 +1,6 @@
 {
-  "name": "time-relay-v24-3",
-  "version": "24.3.0",
+  "name": "time-relay-v24-4",
+  "version": "24.4.0",
   "private": true,
   "type": "module",
   "dependencies": {
