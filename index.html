@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TIME RELAY · V24.4 Exact Identity Edit</title>
+<title>TIME RELAY · V24.5 Face Protected Edit</title>
 <style>
   :root{
     --bg:#020817; --panel:#071428; --panel2:#0b1830; --line:#29405f; --text:#f8fafc; --muted:#9fb2cb;
@@ -567,9 +567,37 @@
     return btoa(binary);
   }
 
+
+  async function buildFaceProtectMask(blob){
+    const url = URL.createObjectURL(blob);
+    try{
+      const img = await new Promise((resolve,reject)=>{
+        const el = new Image();
+        el.onload=()=>resolve(el); el.onerror=reject; el.src=url;
+      });
+      const w=img.naturalWidth, h=img.naturalHeight;
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext('2d',{alpha:false});
+      // Ideogram V4.5 mask convention: black = edit, white = preserve.
+      ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
+      // Conservative frontal-portrait face shield. Keeps facial pixels untouched,
+      // while leaving hair/top of head editable so a school cap can be added.
+      const cx=w*0.50, cy=h*0.37;
+      const rx=w*0.245, ry=h*0.285;
+      ctx.fillStyle='#fff';
+      ctx.beginPath();
+      ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+      ctx.fill();
+      return await new Promise((resolve,reject)=>{
+        canvas.toBlob(b=>b?resolve(b):reject(new Error('얼굴 보호 마스크 생성 실패')),'image/png');
+      });
+    }finally{ URL.revokeObjectURL(url); }
+  }
+
   async function cacheKeyFor(key){
     const faceHash = state.face ? await sha256Blob(state.face) : 'no-face';
-    return `v23.6:${faceHash}:${state.stage}:${key}`;
+    return `v24.5-face-protected:${faceHash}:${state.stage}:${key}`;
   }
 
   async function saveFace(file){
@@ -634,12 +662,16 @@
       }
 
       const imageBase64 = await blobToBase64(state.face);
+      const maskBlob = await buildFaceProtectMask(state.face);
+      const maskBase64 = await blobToBase64(maskBlob);
       const res = await fetch('/api/generate-graduation', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           imageBase64,
+          maskBase64,
           mime:'image/jpeg',
+          maskMime:'image/png',
           stage:state.stage,
           lookKey:key
         })

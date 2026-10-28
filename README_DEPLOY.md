@@ -1,33 +1,37 @@
-# TIME RELAY V24.4 — Exact Identity Edit
+# TIME RELAY V24.5 — Face Protected Edit
 
-핵심 변경:
-- fal 기본 모델을 `blackforestlabs/flux-3/edit-image`로 변경
-- 새 사람을 생성하는 방식이 아니라 등록사진을 직접 편집
-- 등록 얼굴의 나이/성별/표정/얼굴형/헤어를 바꾸지 않도록 프롬프트 강화
-- 고교모자: 검정/남색 둥근 학생모 + 짧은 유광 챙 + 금색 高
-- 교련복: 아이보리 바탕 + 검정 곡선/미로형 고밀도 무늬
-- 결과 화면 별/점 장식 숨김 유지
-- 모바일 홈 Fix 유지
+핵심 변경: 등록 얼굴을 AI가 다시 그리지 않도록 브라우저에서 얼굴 보호 마스크를 자동 생성합니다.
 
-## 중요: fal API Key 권한
-기존 키가 `fal-ai/flux-pro/kontext`만 허용한다면 V24.4는 Forbidden이 납니다.
-fal API Key의 Allowed models에 아래 모델을 추가하거나 새 키를 발급하세요.
+- 흰색 마스크 영역: 원본 얼굴 픽셀 보존
+- 검정 마스크 영역: 의상·모자·가방·배경 편집
+- fal 기본 모델: `ideogram/v4.5/edit`
+- `edit_precision=high`로 unchanged-pixel restoration 사용
+- 기본 품질: `medium`
 
-`blackforestlabs/flux-3/edit-image`
+## fal API Key 권한
+기존 fal API Key의 Allowed models에 다음 모델을 추가해야 합니다.
 
-Vercel Environment Variables:
+`ideogram/v4.5/edit`
+
+## Vercel 환경변수
+기존 변수는 유지하고 아래를 추가/수정합니다.
+
 - `IMAGE_PROVIDER=fal`
-- `FAL_KEY=...`
-- `FAL_EDIT_MODEL=blackforestlabs/flux-3/edit-image`
-- `FAL_EDIT_RESOLUTION=1k`
+- `FAL_FACE_EDIT_MODEL=ideogram/v4.5/edit`
+- `FAL_EDIT_PRECISION=high`
+- `FAL_EDIT_QUALITY=medium`
 
-기존 OpenAI/Supabase 변수는 유지합니다.
+`FAL_KEY`, OpenAI 변수, Supabase 변수는 그대로 유지합니다.
 
-배포 후 확인:
-`/api/health`
+## 배포
+ZIP 안의 내용만 GitHub 저장소 루트에 덮어쓰기 → Commit → Vercel 자동 배포.
+Root Directory는 `./` 유지.
 
-정상 예:
-- version: V24.4 Exact Identity Edit
-- provider: fal
-- model: blackforestlabs/flux-3/edit-image
-- identityMode: edit-existing-photo
+## 확인
+`/api/health`에서 다음을 확인합니다.
+
+- version: `V24.5 Face Protected Edit`
+- model: `ideogram/v4.5/edit`
+- identityMode: `face-protected-mask-edit`
+
+주의: 자동 얼굴 보호 마스크는 정면/반정면 인물사진을 기준으로 한 보수적 중앙 얼굴 영역입니다. 등록 사진에서 얼굴이 크게 좌우로 치우친 경우에는 향후 수동 위치 조정 기능을 추가하는 것이 좋습니다.
